@@ -21,6 +21,8 @@ engineStrict: true
 allowBuilds:
     esbuild: false
 
-# The TanStack Start build plugins ask for an older zod 4.6: one patch line, one version.
+# Security fixes in transitive dependencies (pnpm audit): satori pins fflate 0.7.3, and the TanStack Start build
+# plugins an older zod 4.6. Both are patch releases of the same line.
 overrides:
+    fflate: 0.7.5
     zod: 4.6.7
