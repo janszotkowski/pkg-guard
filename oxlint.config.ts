@@ -34,7 +34,7 @@ export default defineConfig({
         },
         {
             // Code that runs before aliases exist, and `core`, which other packages consume as source.
-            files: ['**/vite.config.ts', '**/vitest.config.ts', '**/tsdown.config.ts', 'packages/core/src/**', 'packages/core/tests/**'],
+            files: ['**/vite.config.ts', '**/vitest.config.ts', '**/tsdown.config.ts', 'apps/frontend/vite/**', 'packages/core/src/**', 'packages/core/tests/**'],
             rules: { 'eslint/no-restricted-imports': 'off' },
         },
         {
