@@ -1,8 +1,20 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
-import { MAX_SEARCH_LENGTH, MIN_SEARCH_LENGTH, analysisFailureSchema, analysisResultSchema, exportDetailsSchema, isExactVersion, parseSpec, type AnalysisResponse } from '@pkg-guard/core';
+import {
+    MAX_SEARCH_LENGTH,
+    MIN_SEARCH_LENGTH,
+    analysisFailureSchema,
+    analysisResultSchema,
+    exportDetailsSchema,
+    TREND_RANGES,
+    isExactVersion,
+    parseSpec,
+    type AnalysisResponse,
+    type HistoryResponse,
+    type VersionEntry,
+} from '@pkg-guard/core';
 import { Hono } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
-import type { PackageSearcher, VersionResolver } from '@modules/analyses/infrastructure/registry.ts';
+import type { DownloadsReader, PackageSearcher, ReleasedVersion, StarsReader, VersionLister, VersionResolver } from '@modules/analyses/infrastructure/registry.ts';
 import type { AnalysisStore } from '@modules/analyses/infrastructure/store.ts';
 import { AppError } from '@platform/errors.ts';
 import type { AppEnv } from '@platform/http/app.ts';
@@ -14,9 +26,50 @@ const SEARCH_SECONDS = 300;
 /** Anything still changing is asked for again, so it must not be kept. */
 const isSettled = (answer: AnalysisResponse): boolean => answer.status === 'done' && answer.exports.status !== 'pending';
 
+const REPOSITORY = /^[\w.-]{1,100}\/[\w.-]{1,100}$/;
+const DOWNLOADS_SECONDS = 3600;
+
+const versionEntry = (released: ReleasedVersion, known: AnalysisResponse | undefined): VersionEntry => {
+    const { version, publishedAt } = released;
+    if (known === undefined) return { version, publishedAt, status: 'unmeasured', gzip: null, minified: null };
+    const sizes = known.status === 'done' ? known.result.sizes : null;
+    return { version, publishedAt, status: known.status, gzip: sizes?.gzip ?? null, minified: sizes?.minified ?? null };
+};
+
 /** The public API: what a package costs. */
-export const analysisRoutes = (store: AnalysisStore, resolve: VersionResolver, search: PackageSearcher): Hono<AppEnv> => {
+export const analysisRoutes = (
+    store: AnalysisStore,
+    resolve: VersionResolver,
+    search: PackageSearcher,
+    listVersions: VersionLister,
+    readDownloads: DownloadsReader,
+    readStars: StarsReader,
+): Hono<AppEnv> => {
     const routes = new Hono<AppEnv>();
+
+    const packageName = (value: string | undefined): string => {
+        const spec = parseSpec(value ?? '');
+        if (spec === undefined || spec.version !== undefined) throw new AppError('VALIDATION_FAILED', 'package must be a name without a version');
+        return spec.name;
+    };
+
+    const history = async (name: string): Promise<HistoryResponse> => ({
+        name,
+        versions: (await listVersions(name)).map((released) => versionEntry(released, store.find({ name, version: released.version }))),
+    });
+
+    routes.get('/history', async (c) => {
+        c.header('cache-control', 'no-store');
+        return c.json(await history(packageName(c.req.query('package'))));
+    });
+
+    // Measuring downloads every version, so it is only ever asked for, never done because a page was opened.
+    routes.post('/history', async (c) => {
+        const name = packageName(c.req.query('package'));
+        for (const { version } of await listVersions(name)) store.enqueueLater({ name, version });
+        c.header('cache-control', 'no-store');
+        return c.json(await history(name));
+    });
 
     routes.get('/analyses', async (c) => {
         const spec = parseSpec(c.req.query('package') ?? '');
@@ -30,6 +83,21 @@ export const analysisRoutes = (store: AnalysisStore, resolve: VersionResolver, s
         // A finished result of an exact version does not change until the analyzer does; what a tag points to does.
         c.header('cache-control', isSettled(answer) ? `public, max-age=${exact ? DAY_SECONDS : TAG_SECONDS}` : 'no-store');
         return c.json(answer);
+    });
+
+    routes.get('/downloads', async (c) => {
+        const name = packageName(c.req.query('package'));
+        const range = TREND_RANGES.find((candidate) => candidate === c.req.query('range'));
+        if (range === undefined) throw new AppError('VALIDATION_FAILED', `range must be one of ${TREND_RANGES.join(', ')}`);
+        c.header('cache-control', `public, max-age=${DOWNLOADS_SECONDS}`);
+        return c.json({ name, days: await readDownloads(name, range) });
+    });
+
+    routes.get('/stars', async (c) => {
+        const repository = c.req.query('repository') ?? '';
+        if (!REPOSITORY.test(repository) || repository.split('/').some((part) => part.startsWith('.'))) throw new AppError('VALIDATION_FAILED', 'repository must be owner/name');
+        c.header('cache-control', `public, max-age=${DOWNLOADS_SECONDS}`);
+        return c.json({ stars: await readStars(repository) });
     });
 
     routes.get('/search', async (c) => {

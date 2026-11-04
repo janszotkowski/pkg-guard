@@ -30,6 +30,8 @@ const envSchema = z
         DATABASE_PATH: z.string().min(1).default('./data/pkg-guard.db'),
         /** What the worker sends to take jobs and hand in results. */
         WORKER_TOKEN: z.string().min(32),
+        /** Optional: GitHub allows 60 questions an hour without a token, for the stars in the trends table. It needs no permissions. */
+        GITHUB_TOKEN: z.string().min(1).optional(),
         /** Packages waiting at most; beyond it the API answers 503 instead of piling up work. */
         QUEUE_MAX_WAITING: z.coerce.number().int().min(1).max(100_000).default(200),
         /** A job whose worker said nothing for this long is taken away from it. Must outlast the worker's own job timeout. */

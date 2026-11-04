@@ -37,7 +37,7 @@ export const createBaseApp = (deps: { config: Config; logger: Logger }): Hono<Ap
         const level = c.req.path === '/internal/jobs/claim' && c.res.ok ? 'debug' : 'info';
         c.var.logger[level]({ method: c.req.method, path: c.req.path, status: c.res.status, ms: Math.round(performance.now() - started) }, 'request');
     });
-    app.use('/v1/*', cors({ origin: (origin) => allowedOrigin(deps.config.CORS_ORIGINS, origin), allowMethods: ['GET', 'HEAD', 'OPTIONS'], maxAge: 86_400 }));
+    app.use('/v1/*', cors({ origin: (origin) => allowedOrigin(deps.config.CORS_ORIGINS, origin), allowMethods: ['GET', 'HEAD', 'POST', 'OPTIONS'], maxAge: 86_400 }));
     app.use(secureHeaders());
 
     app.notFound((c) => c.json(errorBody('NOT_FOUND', 'There is nothing at this address', c.get('requestId')), 404));
