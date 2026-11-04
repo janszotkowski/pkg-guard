@@ -37,6 +37,12 @@ export const MIGRATIONS: readonly string[] = [
     ALTER TABLE analyses ADD COLUMN exports_status TEXT CHECK (exports_status IN ('pending', 'done', 'unavailable'));
     ALTER TABLE analyses ADD COLUMN exports_until INTEGER;
     `,
+    // 0 is someone waiting for this package; 1 is an older version measured on request, after anything that is waited for.
+    `
+    ALTER TABLE analyses ADD COLUMN priority INTEGER NOT NULL DEFAULT 0;
+    DROP INDEX analyses_queue;
+    CREATE INDEX analyses_queue ON analyses (status, priority, requested_at);
+    `,
 ];
 
 export const openDatabase = (path: string): Database => {

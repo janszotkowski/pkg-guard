@@ -82,6 +82,31 @@ describe('analysis store', () => {
         expect(store.find(REF)).toMatchObject({ status: 'done', exports: { status: 'unavailable' } });
     });
 
+    it('measures what someone is waiting for before what was queued for later', () => {
+        const { store } = setup();
+        store.enqueueLater({ name: 'later', version: '1.0.0' });
+        store.findOrEnqueue(REF);
+        expect(store.claim()?.package).toEqual(REF);
+        expect(store.claim()?.package.name).toBe('later');
+    });
+
+    it('moves a package up when someone starts waiting for it', () => {
+        const { store } = setup();
+        store.enqueueLater({ name: 'later', version: '1.0.0' });
+        store.enqueueLater(REF);
+        store.findOrEnqueue(REF);
+        expect(store.claim()?.package).toEqual(REF);
+    });
+
+    it('leaves alone what is already known when queueing for later', () => {
+        const { store } = setup();
+        store.findOrEnqueue(REF);
+        store.complete(store.claim()?.id ?? 0, RESULT);
+        store.enqueueLater(REF);
+        expect(store.find(REF)?.status).toBe('done');
+        expect(store.claim()).toBeUndefined();
+    });
+
     it('takes a job from a silent worker, then gives up after its attempts', () => {
         const { clock, store } = setup();
         store.findOrEnqueue(REF);

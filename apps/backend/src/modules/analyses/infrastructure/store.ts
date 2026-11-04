@@ -26,6 +26,7 @@ type Row = {
     exports: string | null;
     exports_status: string | null;
     exports_until: number | null;
+    priority: number;
 };
 
 export type StoreOptions = { maxWaiting: number; leaseMs: number; maxAttempts: number; failedRetryMs: number; now?: () => number };
@@ -52,6 +53,8 @@ export const createAnalysisStore = (db: Database, options: StoreOptions) => {
     const select = db.prepare('SELECT * FROM analyses WHERE name = ? AND version = ? AND analyzer_version = ?');
     const waiting = db.prepare("SELECT count(*) AS waiting FROM analyses WHERE status = 'queued'");
     const insert = db.prepare("INSERT INTO analyses (name, version, analyzer_version, status, requested_at) VALUES (?, ?, ?, 'queued', ?) RETURNING *");
+    const insertLater = db.prepare("INSERT OR IGNORE INTO analyses (name, version, analyzer_version, status, requested_at, priority) VALUES (?, ?, ?, 'queued', ?, 1)");
+    const promote = db.prepare('UPDATE analyses SET priority = 0 WHERE id = ? RETURNING *');
     const requeue = db.prepare("UPDATE analyses SET status = 'queued', failure_code = NULL, failure_message = NULL, attempts = 0, finished_at = NULL, requested_at = ? WHERE id = ? RETURNING *");
     const giveUp = db.prepare(
         "UPDATE analyses SET status = 'failed', failure_code = 'TIMEOUT', failure_message = 'The analysis did not finish', lease_until = NULL, finished_at = ? WHERE status = 'running' AND lease_until < ? AND attempts >= ?",
@@ -59,7 +62,7 @@ export const createAnalysisStore = (db: Database, options: StoreOptions) => {
     const expire = db.prepare("UPDATE analyses SET status = 'queued', lease_until = NULL WHERE status = 'running' AND lease_until < ? AND attempts < ?");
     const claimNext = db.prepare(
         `UPDATE analyses SET status = 'running', attempts = attempts + 1, lease_until = ?
-         WHERE id = (SELECT id FROM analyses WHERE status = 'queued' AND analyzer_version = ? ORDER BY requested_at, id LIMIT 1)
+         WHERE id = (SELECT id FROM analyses WHERE status = 'queued' AND analyzer_version = ? ORDER BY priority, requested_at, id LIMIT 1)
          RETURNING id, name, version`,
     );
     const finish = db.prepare(
@@ -92,7 +95,16 @@ export const createAnalysisStore = (db: Database, options: StoreOptions) => {
                 assertRoom();
                 return toResponse(requeue.get(now(), row.id) as Row);
             }
+            // Someone is now waiting for what was queued for later.
+            if (row.status === 'queued' && row.priority > 0) return toResponse(promote.get(row.id) as Row);
             return toResponse(row);
+        },
+
+        /** Queues a version to be measured after anything someone is waiting for. What is already known stays as it is. */
+        enqueueLater: (ref: PackageRef): void => {
+            if (select.get(ref.name, ref.version, ANALYZER_VERSION) !== undefined) return;
+            assertRoom();
+            insertLater.run(ref.name, ref.version, ANALYZER_VERSION, now());
         },
 
         /** The oldest waiting package, for one worker. A job whose worker went silent goes back in line first, or fails when it has had its tries. */
