@@ -4,12 +4,14 @@ import {
     errorResponseSchema,
     downloadsResponseSchema,
     historyResponseSchema,
+    packagesResponseSchema,
     searchResponseSchema,
     starsResponseSchema,
     type AnalysisResponse,
     type ErrorCode,
     type HistoryResponse,
     type PackageSuggestion,
+    type PackagesResponse,
     type TrendRange,
 } from '@pkg-guard/core';
 import { keepPreviousData, queryOptions } from '@tanstack/react-query';
@@ -121,3 +123,18 @@ export const starsQuery = (repository: string | undefined) =>
         staleTime: 60 * 60_000,
         retry: false,
     });
+
+/** A package only if it has been measured: what documents for crawlers read, so that they never cause a download. Undefined when it has not. */
+export const fetchKnownAnalysis = async (spec: string): Promise<AnalysisResponse | undefined> => {
+    const response = await fetch(`${API_URL}/v1/analyses?package=${encodeURIComponent(spec)}&known=1&analyzer=${ANALYZER_VERSION}`, { signal: AbortSignal.timeout(TIMEOUT_MS) });
+    if (response.status === 404) return undefined;
+    if (!response.ok) throw new Error(`The API answered ${response.status}`);
+    return analysisResponseSchema.parse(await response.json());
+};
+
+/** Every measured package, for the sitemap. */
+export const fetchMeasuredPackages = async (): Promise<PackagesResponse['packages']> => {
+    const response = await fetch(`${API_URL}/v1/packages`, { signal: AbortSignal.timeout(TIMEOUT_MS) });
+    if (!response.ok) throw new Error(`The API answered ${response.status}`);
+    return packagesResponseSchema.parse(await response.json()).packages;
+};

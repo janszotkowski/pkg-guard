@@ -107,6 +107,14 @@ describe('analysis store', () => {
         expect(store.claim()).toBeUndefined();
     });
 
+    it('lists only what has been measured', () => {
+        const { store } = setup();
+        store.findOrEnqueue(REF);
+        store.findOrEnqueue({ name: 'waiting', version: '1.0.0' });
+        store.complete(store.claim()?.id ?? 0, RESULT);
+        expect(store.measuredPackages(10).map((entry) => entry.name)).toEqual(['example']);
+    });
+
     it('takes a job from a silent worker, then gives up after its attempts', () => {
         const { clock, store } = setup();
         store.findOrEnqueue(REF);

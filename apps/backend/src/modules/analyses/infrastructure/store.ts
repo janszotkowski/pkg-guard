@@ -50,6 +50,7 @@ export const createAnalysisStore = (db: Database, options: StoreOptions) => {
             ...(row.failure_code === null ? {} : { failure: { code: row.failure_code, message: row.failure_message ?? '' } }),
         });
 
+    const measured = db.prepare("SELECT name, max(finished_at) AS finished_at FROM analyses WHERE status = 'done' AND analyzer_version = ? GROUP BY name ORDER BY name LIMIT ?");
     const select = db.prepare('SELECT * FROM analyses WHERE name = ? AND version = ? AND analyzer_version = ?');
     const waiting = db.prepare("SELECT count(*) AS waiting FROM analyses WHERE status = 'queued'");
     const insert = db.prepare("INSERT INTO analyses (name, version, analyzer_version, status, requested_at) VALUES (?, ?, ?, 'queued', ?) RETURNING *");
@@ -78,6 +79,10 @@ export const createAnalysisStore = (db: Database, options: StoreOptions) => {
     };
 
     return {
+        /** Every package with a finished measurement, up to a limit. */
+        measuredPackages: (limit: number): { name: string; measuredAt: string }[] =>
+            (measured.all(ANALYZER_VERSION, limit) as { name: string; finished_at: number }[]).map((row) => ({ name: row.name, measuredAt: new Date(row.finished_at).toISOString() })),
+
         /** What is known of a package, without asking for anything. */
         find: (ref: PackageRef): AnalysisResponse | undefined => {
             const row = select.get(ref.name, ref.version, ANALYZER_VERSION) as Row | undefined;

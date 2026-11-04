@@ -98,6 +98,11 @@ export const analysisResponseSchema = z.discriminatedUnion('status', [
 
 export type AnalysisResponse = z.infer<typeof analysisResponseSchema>;
 
+/** The answer of `GET /v1/packages`: every package with a finished measurement, which is what is worth listing to a crawler. */
+export const packagesResponseSchema = z.object({ packages: z.array(z.object({ name: z.string(), measuredAt: z.string() })) });
+
+export type PackagesResponse = z.infer<typeof packagesResponseSchema>;
+
 /** One package for the worker to measure (`POST /internal/jobs/claim`). */
 export const jobSchema = z.object({ id: z.number(), package: packageRefSchema });
 

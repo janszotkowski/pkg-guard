@@ -28,6 +28,8 @@ const isSettled = (answer: AnalysisResponse): boolean => answer.status === 'done
 
 const REPOSITORY = /^[\w.-]{1,100}\/[\w.-]{1,100}$/;
 const DOWNLOADS_SECONDS = 3600;
+/** What one sitemap file may hold. */
+const MAX_LISTED_PACKAGES = 50_000;
 
 const versionEntry = (released: ReleasedVersion, known: AnalysisResponse | undefined): VersionEntry => {
     const { version, publishedAt } = released;
@@ -76,6 +78,16 @@ export const analysisRoutes = (
         if (spec === undefined) throw new AppError('VALIDATION_FAILED', 'package must be a name with an optional exact version or dist-tag, such as react or react@19.1.0');
 
         const exact = spec.version !== undefined && isExactVersion(spec.version);
+
+        // Documents for crawlers ask with `known=1`: they read what has been measured, and never cause a download.
+        if (c.req.query('known') === '1') {
+            const version = exact ? (spec.version as string) : await resolve(spec.name, spec.version ?? 'latest');
+            const found = store.find({ name: spec.name, version });
+            if (found === undefined) throw new AppError('NOT_FOUND', `${spec.name}@${version} has not been measured`);
+            c.header('cache-control', isSettled(found) ? `public, max-age=${TAG_SECONDS}` : 'no-store');
+            return c.json(found);
+        }
+
         // An exact version already in the store needs no question to the registry: polling costs it nothing.
         const known = exact ? store.find({ name: spec.name, version: spec.version as string }) : undefined;
         const answer = known?.status === 'failed' || known === undefined ? store.findOrEnqueue({ name: spec.name, version: await resolve(spec.name, spec.version ?? 'latest') }) : known;
@@ -83,6 +95,11 @@ export const analysisRoutes = (
         // A finished result of an exact version does not change until the analyzer does; what a tag points to does.
         c.header('cache-control', isSettled(answer) ? `public, max-age=${exact ? DAY_SECONDS : TAG_SECONDS}` : 'no-store');
         return c.json(answer);
+    });
+
+    routes.get('/packages', (c) => {
+        c.header('cache-control', `public, max-age=${DOWNLOADS_SECONDS}`);
+        return c.json({ packages: store.measuredPackages(MAX_LISTED_PACKAGES) });
     });
 
     routes.get('/downloads', async (c) => {
