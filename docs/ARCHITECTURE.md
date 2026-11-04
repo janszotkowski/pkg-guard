@@ -26,7 +26,7 @@ docs             This page
 4. The worker hands in the result, and the page, asking every second, shows it.
 5. The same process then bundles each entry point and each named export alone, and the page adds them when they arrive. Its folder is then removed.
 
-The worker only handles what someone asked for. Nothing is fetched in the background. Suggestions while typing come from the registry's search through `GET /v1/search`: names and descriptions only, nothing is installed.
+The worker only handles what someone asked for. Nothing is fetched in the background: older versions of a package are measured only when someone looks at them, on a package's History tab or in the size view of the trends page, behind anything someone is waiting for. Suggestions while typing come from the registry's search through `GET /v1/search`: names and descriptions only, nothing is installed.
 
 ## Handling packages safely
 
