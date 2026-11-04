@@ -1,22 +1,39 @@
-.idea
+# Dependencies and build output.
 node_modules
 dist
+.output
 .turbo
+.tanstack
+
+# Local configuration and secrets: only the empty examples are committed.
 .env
 .env.*
 !.env.example
-*.log
-.DS_Store
-.output
-src/paraglide
-.paraglide
-.tanstack
-playwright-report
-test-results
-# The local CVE database (rebuilt by the sync).
-data
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+id_rsa
+id_ed25519
+
+# Local database (rebuilt by analyses).
+apps/backend/data/
 *.db
 *.db-*
+*.sqlite
+*.sqlite-*
 
-# Browser test database, reports and traces.
-apps/e2e/test-db
+# Test output.
+coverage
+playwright-report
+test-results
+
+# Editors, agents and the OS.
+.idea
+.vscode
+.cursor
+.claude/settings.local.json
+.claude/worktrees
+.DS_Store
+*.log

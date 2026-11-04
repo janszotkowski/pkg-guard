@@ -1,0 +1,26 @@
+packages:
+    - apps/*
+    - packages/*
+
+# Supply-chain protection: only versions older than 7 days are installed (in minutes).
+# This protects the project's own dependencies. The worker installs the packages it analyzes with its own settings.
+minimumReleaseAge: 10080
+
+# Transitive dependencies come from the registry only, never from a git repository or a tarball URL.
+blockExoticSubdeps: true
+
+# An install script that is neither allowed nor denied in allowBuilds fails the install instead of being skipped.
+strictDepBuilds: true
+
+# Exact versions in package.json, no ^ or ~.
+savePrefix: ''
+
+engineStrict: true
+
+# esbuild only runs a post-install speed-up; its binary comes from an optional package, so the script is not needed.
+allowBuilds:
+    esbuild: false
+
+# The TanStack Start build plugins ask for an older zod 4.6: one patch line, one version.
+overrides:
+    zod: 4.6.7

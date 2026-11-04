@@ -1,0 +1,50 @@
+{
+    "name": "pkg-guard",
+    "version": "0.0.0",
+    "private": true,
+    "description": "Free, open tool that shows what an npm package really costs your bundle",
+    "homepage": "https://github.com/janszotkowski/pkg-guard#readme",
+    "bugs": {
+        "url": "https://github.com/janszotkowski/pkg-guard/issues"
+    },
+    "license": "MIT",
+    "author": "Jan Szotkowski",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/janszotkowski/pkg-guard.git"
+    },
+    "type": "module",
+    "scripts": {
+        "env:init": "node tools/init-env.js",
+        "build": "turbo run build",
+        "dev": "node tools/init-env.js && turbo run dev",
+        "start": "turbo run start",
+        "lint": "oxlint --deny-warnings",
+        "lint:fix": "oxlint --fix",
+        "typecheck": "turbo run typecheck",
+        "test": "turbo run test",
+        "format": "oxfmt",
+        "format:check": "oxfmt --check",
+        "policy": "node tools/check-policy.js",
+        "verify": "pnpm policy && pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm build"
+    },
+    "devDependencies": {
+        "oxfmt": "0.74.0",
+        "oxlint": "1.89.0",
+        "turbo": "2.11.9",
+        "typescript": "7.0.2"
+    },
+    "devEngines": {
+        "packageManager": {
+            "name": "pnpm",
+            "version": "12.14.0",
+            "onFail": "download"
+        },
+        "runtime": {
+            "name": "node",
+            "version": "24.22.1",
+            "onFail": "error"
+        }
+    },
+    "packageManager": "pnpm@12.14.0+sha512.c18ba6d87993d3d164cb5e8948f32b2c06ee854487e06cd8d86781342fb3e5bb4634367034711e86802baa9c37bea906ce1929ad08d70884c97d801df13389a6"
+}

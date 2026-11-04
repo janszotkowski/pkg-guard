@@ -1,0 +1,40 @@
+name: CI
+
+# Every push to main and every pull request runs the same checks as `pnpm verify` locally.
+on:
+    push:
+        branches: [main]
+    pull_request:
+
+permissions:
+    contents: read
+
+concurrency:
+    group: ci-${{ github.ref }}
+    cancel-in-progress: true
+
+env:
+    TURBO_TELEMETRY_DISABLED: '1'
+    DO_NOT_TRACK: '1'
+
+jobs:
+    verify:
+        name: Verify
+        runs-on: ubuntu-24.04
+        timeout-minutes: 15
+        steps:
+            # Actions are pinned to a commit (a tag can be moved to other code).
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  # No token left in .git/config for the steps after it: nothing here pushes.
+                  persist-credentials: false
+            - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+            - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+              with:
+                  node-version-file: .node-version
+                  cache: pnpm
+            - run: pnpm install --frozen-lockfile
+            # A known vulnerability in any dependency fails the run, so it is fixed (or overridden) before it ships.
+            - name: Dependency audit
+              run: pnpm audit --audit-level=low
+            - run: pnpm verify
