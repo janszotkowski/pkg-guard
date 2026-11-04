@@ -40,7 +40,22 @@ A package is untrusted code. It is read, never run:
 - **Limits**: one process group per package, killed after `JOB_TIMEOUT_MS`, and a cap on installed bytes (`MAX_INSTALL_BYTES`).
 - **Validated names**: a package name reaches URLs and paths only through `isValidPackageName`.
 
-**Not there yet, and required before this runs on a public server:** limiting the worker's network to the npm registry, a rate limit on the API, and a Content-Security-Policy on the frontend.
+**Not there yet, and required before this runs on a public server:** limiting the worker's network to the npm registry, and a rate limit on the API, which crawlers opening pages of unmeasured packages would otherwise use to queue downloads.
+
+## Search engines and agents
+
+- **One head for every page**: `pageHead` builds the title, description, canonical address, Open Graph and Twitter cards, and one JSON-LD graph.
+- **What is indexed**: the home page, the trends page and measured packages at their own address. A package still being measured, a page of one version and a chosen comparison are kept out, and so is every page outside production (`VITE_ALLOW_INDEXING`).
+- **Documents**: `robots.txt`, `sitemap.xml`, `llms.txt`, `.well-known/security.txt` and `.well-known/ai-catalog.json`, share images at `/og/`, and each package as Markdown (`.md`, or `Accept: text/markdown`), all from `src/server.ts`.
+- **Reading never downloads**: documents and share images ask the API with `known=1`, so a crawler following them cannot cause a package to be measured.
+
+## Security headers
+
+Every response gets the security headers, and each page a Content-Security-Policy built from the hashes of its own inline scripts, never `'unsafe-inline'`. None of it applies to the dev server, whose hot reload a strict policy would block.
+
+## Accessibility
+
+Keyboard reachable with a skip link and visible focus, labelled controls, tables with real headers, reduced motion respected, and after each navigation the new page's title is announced and focus moves to it.
 
 ## Measuring
 
