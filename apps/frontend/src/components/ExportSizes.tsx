@@ -137,39 +137,29 @@ type ExportSizesProps = {
 
 /** What importing only a part of the package costs. These numbers arrive after the main result, so the page says when they are on their way. */
 export const ExportSizes = (props: ExportSizesProps) => {
-    if (!props.hasEntry && (props.exports.status !== 'done' || props.exports.details.subpaths.length === 0)) return null;
     if (props.exports.status === 'pending') {
         return (
             <p
                 role={'status'}
-                className={'border-t pt-6 text-callout text-muted-foreground'}
+                className={'text-callout text-muted-foreground'}
             >
                 Measuring each export…
             </p>
         );
     }
     if (props.exports.status === 'unavailable') {
-        return <p className={'border-t pt-6 text-callout text-muted-foreground'}>The size of each export could not be measured for this package.</p>;
+        return <p className={'text-callout text-muted-foreground'}>The size of each export could not be measured for this package.</p>;
     }
     const details = props.exports.details;
     return (
-        <section
-            aria-labelledby={'parts-title'}
-            className={'flex flex-col gap-8'}
-        >
+        <div className={'flex flex-col gap-8'}>
             <div className={'flex flex-col gap-2'}>
-                <h2
-                    id={'parts-title'}
-                    className={'text-title-2'}
-                >
-                    Importing only a part
-                </h2>
                 <p className={'max-w-2xl text-callout text-muted-foreground'}>
                     {props.hasEntry ? `${treeShakingText(details)} ` : ''}Each number is that part bundled alone; what parts share is counted once when you import several.
                 </p>
             </div>
             {details.subpaths.length > 0 && <Subpaths details={details} />}
             {details.namedTotal > 0 && <NamedExports details={details} />}
-        </section>
+        </div>
     );
 };

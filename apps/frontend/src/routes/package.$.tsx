@@ -1,13 +1,16 @@
-import { parseSpec, type AnalysisFailure } from '@pkg-guard/core';
+import { parseSpec, type AnalysisFailure, type AnalysisResponse } from '@pkg-guard/core';
 import { useSuspenseQuery } from '@tanstack/react-query';
-import { createFileRoute, notFound } from '@tanstack/react-router';
+import { createFileRoute, notFound, useNavigate } from '@tanstack/react-router';
+import { useMemo } from 'react';
 import { Composition } from '@components/Composition';
 import { ExportSizes } from '@components/ExportSizes';
 import { IsoAnalyzing } from '@components/iso/IsoAnalyzing';
 import { IsoOffline } from '@components/iso/IsoOffline';
 import { NotFound } from '@components/NotFound';
 import { PackageLinks } from '@components/PackageLinks';
+import { PACKAGE_TABS, PackageTabs, type PackageTab } from '@components/PackageTabs';
 import { SizeResult } from '@components/SizeResult';
+import { VersionHistory } from '@components/VersionHistory';
 import { siteConfig } from '@config/site';
 import { ApiError, analysisQuery } from '@lib/api';
 
@@ -51,8 +54,76 @@ const Failed = (props: FailedProps) => (
     </div>
 );
 
+type PackageDetailsProps = { data: Extract<AnalysisResponse, { status: 'done' }>; tab: PackageTab | undefined; onTab: (tab: PackageTab) => void };
+
+/** What there is to look into for this package, one tab at a time. A tab with nothing in it is not offered. */
+const PackageDetails = (props: PackageDetailsProps) => {
+    const { data } = props;
+    const { result, exports } = data;
+    const sizes = result.sizes;
+    const tabs = useMemo(() => {
+        const details = exports.status === 'done' ? exports.details : undefined;
+        return [
+            ...(sizes === null
+                ? []
+                : [
+                      {
+                          value: 'history' as const,
+                          label: 'History',
+                          content: (
+                              <VersionHistory
+                                  name={data.package.name}
+                                  version={data.package.version}
+                              />
+                          ),
+                      },
+                  ]),
+            ...(sizes === null || result.composition.total < 2
+                ? []
+                : [
+                      {
+                          value: 'composition' as const,
+                          label: `Composition · ${result.composition.total}`,
+                          content: (
+                              <Composition
+                                  composition={result.composition}
+                                  minified={sizes.minified}
+                                  packageName={data.package.name}
+                              />
+                          ),
+                      },
+                  ]),
+            ...(sizes === null && (details === undefined || details.subpaths.length === 0)
+                ? []
+                : [
+                      {
+                          value: 'exports' as const,
+                          label: details === undefined || details.namedTotal === 0 ? 'Exports' : `Exports · ${details.namedTotal}`,
+                          content: (
+                              <ExportSizes
+                                  exports={exports}
+                                  hasEntry={sizes !== null}
+                              />
+                          ),
+                      },
+                  ]),
+        ];
+    }, [data.package.name, data.package.version, exports, result.composition, sizes]);
+    const first = tabs[0];
+    if (first === undefined) return null;
+    return (
+        <PackageTabs
+            tabs={tabs}
+            value={tabs.find((tab) => tab.value === props.tab)?.value ?? first.value}
+            onChange={props.onTab}
+        />
+    );
+};
+
 const PackagePage = () => {
     const spec = Route.useParams()._splat ?? '';
+    const { tab } = Route.useSearch();
+    const navigate = useNavigate({ from: '/package/$' });
     const { data, isRefetchError } = useSuspenseQuery(analysisQuery(spec));
     // While there is nothing to read yet, the page holds one thing, in its middle.
     const finished = data.status === 'done';
@@ -87,16 +158,12 @@ const PackagePage = () => {
             {data.status === 'done' && (
                 <>
                     <SizeResult result={data.result} />
-                    {data.result.sizes !== null && (
-                        <Composition
-                            composition={data.result.composition}
-                            minified={data.result.sizes.minified}
-                            packageName={data.package.name}
-                        />
-                    )}
-                    <ExportSizes
-                        exports={data.exports}
-                        hasEntry={data.result.sizes !== null}
+                    <PackageDetails
+                        data={data}
+                        tab={tab}
+                        onTab={(next) => {
+                            void navigate({ search: { tab: next }, resetScroll: false, replace: true });
+                        }}
                     />
                 </>
             )}
@@ -106,6 +173,10 @@ const PackagePage = () => {
 };
 
 export const Route = createFileRoute('/package/$')({
+    validateSearch: (search: Record<string, unknown>): { tab?: PackageTab } => {
+        const tab = PACKAGE_TABS.find((candidate) => candidate === search['tab']);
+        return tab === undefined ? {} : { tab };
+    },
     loader: async ({ params, context }) => {
         const spec = params._splat ?? '';
         if (parseSpec(spec) === undefined) throw notFound();
