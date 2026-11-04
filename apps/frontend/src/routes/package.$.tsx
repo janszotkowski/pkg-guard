@@ -7,12 +7,14 @@ import { ExportSizes } from '@components/ExportSizes';
 import { IsoAnalyzing } from '@components/iso/IsoAnalyzing';
 import { IsoOffline } from '@components/iso/IsoOffline';
 import { NotFound } from '@components/NotFound';
-import { PackageLinks } from '@components/PackageLinks';
+import { PackageLinks, npmUrl } from '@components/PackageLinks';
 import { PACKAGE_TABS, PackageTabs, type PackageTab } from '@components/PackageTabs';
 import { SizeResult } from '@components/SizeResult';
 import { VersionHistory } from '@components/VersionHistory';
-import { siteConfig } from '@config/site';
+import { canonicalUrl, siteConfig } from '@config/site';
 import { ApiError, analysisQuery } from '@lib/api';
+import { formatSizeText } from '@lib/format';
+import { clip, pageHead } from '@lib/head';
 
 const FAILURE_TEXT: Record<AnalysisFailure['code'], string> = {
     INSTALL_FAILED: 'The package could not be installed.',
@@ -172,6 +174,53 @@ const PackagePage = () => {
     );
 };
 
+/**
+ * The page of a package. Only a measured package at its own address (no version in it) is listed: a page still being
+ * measured says nothing yet, and every version of every package would bury the page people search for.
+ */
+const packageHead = (spec: string, data: AnalysisResponse | undefined) => {
+    const path = `/package/${spec}`;
+    const parsed = parseSpec(spec);
+    const name = data?.package.name ?? parsed?.name ?? spec;
+    const result = data?.status === 'done' ? data.result : undefined;
+    const sizes = result?.sizes;
+    const text =
+        result === undefined
+            ? `What ${name} costs your bundle: minified, gzip and brotli size, measured with a modern bundler.`
+            : sizes === undefined || sizes === null
+              ? `${name} ${data?.package.version}: ${formatSizeText(result.install.bytes)} on disk. ${result.description ?? ''}`
+              : `${name} ${data?.package.version}: ${formatSizeText(sizes.gzip)} minified and gzipped, ${formatSizeText(sizes.minified)} minified. ${result.description ?? ''}`;
+    return pageHead({
+        title: sizes === undefined || sizes === null ? `${name} size` : `${name} size: ${formatSizeText(sizes.gzip)} gzip`,
+        description: clip(text),
+        path,
+        noindex: result === undefined || parsed?.version !== undefined,
+        ...(result === undefined
+            ? {}
+            : { ogImage: { path: `/og/package/${spec}.png`, alt: `${name}: ${sizes === undefined || sizes === null ? 'install size' : `${formatSizeText(sizes.gzip)} minified and gzipped`}` } }),
+        breadcrumbs: [
+            { name: siteConfig.title, path: '/' },
+            { name, path },
+        ],
+        nodes:
+            result === undefined || data === undefined
+                ? []
+                : [
+                      {
+                          '@type': 'SoftwareSourceCode',
+                          '@id': `${canonicalUrl(path)}#package`,
+                          name,
+                          version: data.package.version,
+                          programmingLanguage: 'JavaScript',
+                          runtimePlatform: 'npm',
+                          url: npmUrl(data.package),
+                          ...(result.description === null ? {} : { description: result.description }),
+                          ...(result.repositoryUrl === null ? {} : { codeRepository: result.repositoryUrl }),
+                      },
+                  ],
+    });
+};
+
 export const Route = createFileRoute('/package/$')({
     validateSearch: (search: Record<string, unknown>): { tab?: PackageTab } => {
         const tab = PACKAGE_TABS.find((candidate) => candidate === search['tab']);
@@ -181,13 +230,13 @@ export const Route = createFileRoute('/package/$')({
         const spec = params._splat ?? '';
         if (parseSpec(spec) === undefined) throw notFound();
         try {
-            await context.queryClient.ensureQueryData(analysisQuery(spec));
+            return await context.queryClient.ensureQueryData(analysisQuery(spec));
         } catch (error) {
             if (error instanceof ApiError && error.code === 'NOT_FOUND') throw notFound();
             throw error;
         }
     },
-    head: ({ params }) => ({ meta: [{ title: `${params._splat ?? 'Package'} | ${siteConfig.title}` }] }),
+    head: ({ params, loaderData }) => packageHead(params._splat ?? '', loaderData),
     component: PackagePage,
     notFoundComponent: () => (
         <NotFound

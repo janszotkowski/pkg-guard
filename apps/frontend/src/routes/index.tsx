@@ -1,6 +1,8 @@
 import { Link, createFileRoute } from '@tanstack/react-router';
 import { IsoPackage } from '@components/iso/IsoPackage';
 import { PackageSearch } from '@components/PackageSearch';
+import { canonicalUrl, siteConfig } from '@config/site';
+import { pageHead } from '@lib/head';
 
 const PROMISES = [
     { title: 'Measured, not guessed', body: 'Every package goes through a real bundler, and you see which one and which version.' },
@@ -43,5 +45,24 @@ const HomePage = () => (
 );
 
 export const Route = createFileRoute('/')({
+    head: () =>
+        pageHead({
+            title: 'npm package size and bundle cost',
+            description: siteConfig.description,
+            path: '/',
+            nodes: [
+                {
+                    '@type': 'WebApplication',
+                    '@id': `${canonicalUrl('/')}#app`,
+                    name: siteConfig.title,
+                    url: canonicalUrl('/'),
+                    description: siteConfig.description,
+                    applicationCategory: 'DeveloperApplication',
+                    operatingSystem: 'Any',
+                    isAccessibleForFree: true,
+                    offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+                },
+            ],
+        }),
     component: HomePage,
 });

@@ -38,20 +38,26 @@ const RootDocument = () => (
 );
 
 export const Route = createRootRouteWithContext<RouterContext>()({
-    head: () => ({
-        meta: [
-            { charSet: 'utf-8' },
-            { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-            { name: 'theme-color', content: THEME_COLOR.dark },
-            { title: siteConfig.title },
-            { name: 'description', content: siteConfig.description },
-            ...(ALLOW_INDEXING ? [] : [{ name: 'robots', content: 'noindex, nofollow' }]),
-        ],
-        links: [
-            { rel: 'stylesheet', href: appCss },
-            { rel: 'preload', href: interLatin, as: 'font', type: 'font/woff2', crossOrigin: 'anonymous' },
-            { rel: 'icon', href: '/favicon.svg', type: 'image/svg+xml' },
-        ],
-    }),
+    head: ({ matches }) => {
+        // A missing or failed page says so in the tab and in what a screen reader announces after a navigation.
+        const notFound = matches.some((match) => match.status === 'notFound' || match._notFound === true);
+        const failed = !notFound && matches.some((match) => match.status === 'error');
+        return {
+            meta: [
+                { charSet: 'utf-8' },
+                { name: 'viewport', content: 'width=device-width, initial-scale=1' },
+                { name: 'theme-color', content: THEME_COLOR.dark },
+                { title: notFound ? `Page not found | ${siteConfig.title}` : failed ? `Something went wrong | ${siteConfig.title}` : siteConfig.title },
+                { name: 'description', content: siteConfig.description },
+                // Safe default for routes that set no head of their own; on non-production environments nothing is indexed anywhere.
+                ...(ALLOW_INDEXING && !notFound && !failed ? [] : [{ name: 'robots', content: 'noindex, nofollow' }]),
+            ],
+            links: [
+                { rel: 'stylesheet', href: appCss },
+                { rel: 'preload', href: interLatin, as: 'font', type: 'font/woff2', crossOrigin: 'anonymous' },
+                { rel: 'icon', href: '/favicon.svg', type: 'image/svg+xml' },
+            ],
+        };
+    },
     component: RootDocument,
 });

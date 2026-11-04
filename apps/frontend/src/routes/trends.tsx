@@ -10,10 +10,11 @@ import { TrendsChart, type TrendRow } from '@components/TrendsChart';
 import { TrendsTable, type TrendsTableRow } from '@components/TrendsTable';
 import { Button } from '@components/ui/button';
 import { siteConfig } from '@config/site';
+import { pageHead } from '@lib/head';
 import { ApiError, analysisQuery, downloadsQuery, historyQuery, starsQuery } from '@lib/api';
 import { useMeasureOnce } from '@lib/useMeasureOnce';
 import { formatCount, formatSizeText } from '@lib/format';
-import { MAX_TREND_PACKAGES, groupDownloads, repositoryOf, trendsView, validateTrendsSearch, weeklyDownloads, type TrendGroup, type TrendMetric, type TrendsSearch } from '@lib/trends';
+import { MAX_TREND_PACKAGES, groupDownloads, parsePackages, repositoryOf, trendsView, validateTrendsSearch, weeklyDownloads, type TrendGroup, type TrendMetric, type TrendsSearch } from '@lib/trends';
 
 const SERIES_COLORS = ['var(--series-1)', 'var(--series-2)', 'var(--series-3)', 'var(--series-4)'] as const;
 
@@ -348,8 +349,22 @@ const TrendsPage = () => {
 export const Route = createFileRoute('/trends')({
     validateSearch: validateTrendsSearch,
     head: ({ match }) => {
-        const names = trendsView(match.search).packages;
-        return { meta: [{ title: `${names.length > 0 ? names.join(' vs ') : 'Package trends'} | ${siteConfig.title}` }] };
+        const named = match.search.packages;
+        const names = named === undefined ? [] : parsePackages(named);
+        return pageHead({
+            title: names.length > 0 ? `${names.join(' vs ')}: size and downloads` : 'npm package trends: compare size and downloads',
+            description:
+                names.length > 0
+                    ? `Compare ${names.join(', ')}: minified and gzip size across releases, weekly downloads and GitHub stars, side by side.`
+                    : 'Compare npm packages side by side: minified and gzip size across releases, downloads over time, install size and GitHub stars.',
+            path: '/trends',
+            // A comparison of any packages is a view of this one page: only the page itself is listed.
+            noindex: names.length > 0,
+            breadcrumbs: [
+                { name: siteConfig.title, path: '/' },
+                { name: 'Trends', path: '/trends' },
+            ],
+        });
     },
     component: TrendsPage,
 });
