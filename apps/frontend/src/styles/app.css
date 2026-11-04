@@ -1,0 +1,544 @@
+@import 'tailwindcss' source('../');
+@import '@fontsource-variable/inter/index.css';
+
+/*
+ * Design language: taken over from sitehp.app and CVE Tracker. Dark is the identity and is what the
+ * server renders (`<html class="dark">`); light is a full peer built from the
+ * same tokens. The boot script in src/lib/theme.ts follows the system setting
+ * before first paint.
+ */
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+    /* Typeface: Inter variable (weight axis only: the optical-size files are half as big again); system monospace for code. */
+    --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+    --font-heading: var(--font-sans);
+    --font-mono: ui-monospace, 'SF Mono', 'Cascadia Code', Menlo, Consolas, monospace;
+
+    /* Colors (mapped to the CSS variables below). */
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-subtle-foreground: var(--subtle-foreground);
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-destructive: var(--destructive);
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+    --color-link: var(--link);
+
+    /* Shape: generously rounded. xs chips · sm inputs · md buttons/rows · lg cards · xl sheets · 4xl pills. */
+    --radius-xs: 8px;
+    --radius-sm: 12px;
+    --radius-md: 18px;
+    --radius-lg: 24px;
+    --radius-xl: 32px;
+    --radius-2xl: 40px;
+    --radius-3xl: 56px;
+    --radius-4xl: 999px;
+
+    /* Type scale: size, leading and tracking move together (tracking tightens as size grows). */
+    --text-score: clamp(5rem, 22vw, 9rem);
+    --text-score--line-height: 0.95;
+    --text-score--letter-spacing: -0.04em;
+    --text-score--font-weight: 600;
+    --text-display: clamp(2.25rem, 7vw, 4rem);
+    --text-display--line-height: 1.05;
+    --text-display--letter-spacing: -0.03em;
+    --text-display--font-weight: 600;
+    --text-title-1: 2rem;
+    --text-title-1--line-height: 1.15;
+    --text-title-1--letter-spacing: -0.02em;
+    --text-title-1--font-weight: 600;
+    --text-title-2: 1.5rem;
+    --text-title-2--line-height: 1.2;
+    --text-title-2--letter-spacing: -0.015em;
+    --text-title-2--font-weight: 600;
+    --text-headline: 1.0625rem;
+    --text-headline--line-height: 1.35;
+    --text-headline--letter-spacing: -0.005em;
+    --text-headline--font-weight: 600;
+    --text-callout: 0.9375rem;
+    --text-callout--line-height: 1.45;
+    --text-callout--font-weight: 400;
+    --text-code: 0.8125rem;
+    --text-code--line-height: 1.5;
+    --text-code--font-weight: 400;
+    --text-caption: 0.8125rem;
+    --text-caption--line-height: 1.35;
+    --text-caption--letter-spacing: 0.01em;
+    --text-caption--font-weight: 500;
+    --text-overline: 0.75rem;
+    --text-overline--line-height: 1.2;
+    --text-overline--letter-spacing: 0.06em;
+    --text-overline--font-weight: 600;
+
+    /* Easing for non-interactive color and opacity changes. */
+    --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* Light: a full peer of dark, from the same tokens. */
+:root {
+    color-scheme: light;
+    --background: #fbfbfd;
+    --foreground: #17171a;
+    --card: #ffffff;
+    --card-foreground: #17171a;
+    --popover: #ffffff;
+    --popover-foreground: #17171a;
+    /* The primary action is inverted (ink on paper, paper on ink): the UI stays monochrome so color keeps its meaning. */
+    --primary: #17171a;
+    --primary-foreground: #fbfbfd;
+    --secondary: #f2f2f6;
+    --secondary-foreground: #17171a;
+    --muted: #f2f2f6;
+    --muted-foreground: #4e4e57;
+    --subtle-foreground: #5f5f69;
+    --accent: #f2f2f6;
+    --accent-foreground: #17171a;
+    --destructive: #b3281f;
+    --border: rgb(0 0 0 / 8%);
+    /* The edge of a form control must reach 3:1 against the page (WCAG 1.4.11), so it is an opaque gray, not a faint hairline. */
+    --input: #8a8a94;
+    --ring: #0c6e42;
+    --link: #0c6e42;
+
+    /* Glass: structure floating above content. */
+    --glass-bg: rgb(255 255 255 / 60%);
+    --glass-border: rgb(255 255 255 / 70%);
+    /* Bright top edge: light catching the material. */
+    --glass-edge: rgb(255 255 255 / 95%);
+    --glass-shadow: 0 8px 32px rgb(0 0 0 / 10%);
+    --glass-blur: 24px;
+
+    /* Dims the page behind a modal task (dialogs, sheets). */
+    --scrim: rgb(0 0 0 / 35%);
+
+    /* Peak strength of the glow at the top of the page. */
+    --glow-strength: 10%;
+    --glow-color: #0c6e42;
+
+    /* The sticky header's height (a 2.75rem row, 0.5rem above and below, a hairline), so what hangs under it lines up. */
+    --site-header-height: calc(3.75rem + 1px);
+}
+
+.dark {
+    color-scheme: dark;
+    --background: #000;
+    --foreground: #f5f5f7;
+    --card: #141418;
+    --card-foreground: #f5f5f7;
+    --popover: #1c1c22;
+    --popover-foreground: #f5f5f7;
+    --primary: #f5f5f7;
+    --primary-foreground: #0b0b0e;
+    --secondary: #1c1c22;
+    --secondary-foreground: #f5f5f7;
+    --muted: #1c1c22;
+    --muted-foreground: #a6a6ae;
+    --subtle-foreground: #8b8b95;
+    --accent: #1c1c22;
+    --accent-foreground: #f5f5f7;
+    --destructive: #ff6b63;
+    --border: rgb(255 255 255 / 8%);
+    --input: #6b6b75;
+    --ring: #3dd68c;
+    --link: #3dd68c;
+
+    --glass-bg: rgb(20 20 24 / 60%);
+    --glass-border: rgb(255 255 255 / 14%);
+    --glass-edge: rgb(255 255 255 / 24%);
+    --glass-shadow: 0 8px 32px rgb(0 0 0 / 45%);
+    --scrim: rgb(0 0 0 / 55%);
+    --glow-strength: 14%;
+    --glow-color: #3dd68c;
+}
+
+@layer base {
+    * {
+        @apply border-border outline-ring/50;
+    }
+    html {
+        @apply font-sans;
+        -webkit-font-smoothing: antialiased;
+        text-rendering: optimizeLegibility;
+        text-size-adjust: 100%;
+        /* The sticky header covers the top of the page: a focused or linked element scrolls clear of it. */
+        scroll-padding-top: 5rem;
+    }
+    body {
+        @apply bg-background text-foreground;
+        font-size: 1rem;
+        line-height: 1.5;
+        /* A green glow from the top edge, pinned to the viewport, in both themes. */
+        background-image: radial-gradient(ellipse 80% 60vh at 50% 0%, color-mix(in oklch, var(--glow-color) var(--glow-strength), transparent), transparent 70%);
+        background-repeat: no-repeat;
+        background-attachment: fixed;
+        /* A manual theme change eases instead of flashing; first paint is set before render. */
+        transition:
+            background-color 200ms var(--ease-standard),
+            color 200ms var(--ease-standard);
+    }
+    /* The target of the focus after a navigation is not a control: no ring on it. Other programmatic focus keeps its ring. */
+    #main[tabindex='-1']:focus {
+        outline: none;
+    }
+    :where(:focus-visible) {
+        outline: 2px solid var(--ring);
+        outline-offset: 2px;
+    }
+    button:not(:disabled),
+    [role='button']:not(:disabled) {
+        cursor: pointer;
+    }
+}
+
+/* Glass: translucent layer for what floats above content (tab bar, rail, sheets, dialogs, popovers). Never stack glass on glass. */
+@utility glass {
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+    border: 1px solid var(--glass-border);
+    border-top-color: var(--glass-edge);
+    box-shadow: var(--glass-shadow);
+}
+
+/* Heavier glass for structural regions such as the desktop rail. */
+@utility glass-heavy {
+    background: color-mix(in oklch, var(--background) 78%, transparent);
+    backdrop-filter: blur(calc(var(--glass-blur) * 1.5)) saturate(160%);
+    -webkit-backdrop-filter: blur(calc(var(--glass-blur) * 1.5)) saturate(160%);
+    border: 1px solid var(--glass-border);
+    border-top-color: var(--glass-edge);
+    box-shadow: var(--glass-shadow);
+}
+
+/* Text on glass: higher contrast, one step heavier, a small tracking bump (vibrancy). Color belongs on a solid layer, not on the translucent foreground. */
+@utility vibrancy {
+    font-weight: 500;
+    letter-spacing: 0.005em;
+    color: var(--foreground);
+}
+
+/* Scroll edge effect instead of a hard divider where content slides under floating chrome. */
+@utility scroll-edge-top {
+    mask-image: linear-gradient(to bottom, transparent, #000 1.5rem);
+    -webkit-mask-image: linear-gradient(to bottom, transparent, #000 1.5rem);
+}
+
+@media (prefers-reduced-transparency: reduce) {
+    :root,
+    .dark {
+        --glass-blur: 0px;
+        --glass-bg: var(--card);
+    }
+}
+
+@media (prefers-contrast: more) {
+    :root {
+        --border: rgb(0 0 0 / 40%);
+        --glass-bg: var(--card);
+        --glass-border: rgb(0 0 0 / 45%);
+    }
+    .dark {
+        --border: rgb(255 255 255 / 45%);
+        --glass-border: rgb(255 255 255 / 55%);
+    }
+}
+
+/* Reduced motion keeps comprehension (color and opacity) and drops slides, springs and sweeps. The delayed hint is only an opacity change, and dropping it would show it at once. */
+@media (prefers-reduced-motion: reduce) {
+    *:not(.delayed-hint),
+    ::before,
+    ::after {
+        animation: none !important;
+        scroll-behavior: auto !important;
+        transition-property: opacity, color, background-color, border-color, fill, stroke !important;
+        transition-duration: 150ms !important;
+    }
+}
+
+/*
+ * Loading: an indeterminate bar under the header, and a veil that sweeps over content being replaced. Both only appear
+ * after a short delay so a fast answer shows nothing at all. With reduced motion they pulse instead.
+ */
+.loading-bar::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    width: 40%;
+    animation: loading-slide 1.1s var(--ease-standard) infinite;
+}
+
+@keyframes loading-slide {
+    from {
+        transform: translateX(-100%);
+    }
+    to {
+        transform: translateX(250%);
+    }
+}
+
+.loading-veil {
+    position: relative;
+}
+
+.loading-veil::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(100deg, transparent 20%, color-mix(in oklch, var(--foreground) 6%, transparent) 50%, transparent 80%);
+    background-size: 200% 100%;
+    animation: loading-sweep 1.4s linear infinite;
+}
+
+@keyframes loading-sweep {
+    from {
+        background-position: 150% 0;
+    }
+    to {
+        background-position: -50% 0;
+    }
+}
+
+/* Placeholder blocks of a page whose data is on its way. */
+.skeleton {
+    border-radius: var(--radius-xs);
+    background: color-mix(in oklch, var(--foreground) 7%, transparent);
+    animation: skeleton-pulse 1.6s var(--ease-standard) infinite alternate;
+}
+
+@keyframes skeleton-pulse {
+    from {
+        opacity: 0.55;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .loading-bar::before {
+        width: 100%;
+        animation: skeleton-pulse 1.2s var(--ease-standard) infinite alternate !important;
+    }
+    .loading-veil::after {
+        animation: none !important;
+        background: color-mix(in oklch, var(--background) 30%, transparent);
+    }
+}
+
+/*
+ * Isometric illustrations (src/components/iso): flat faces in the page's grays, thin edges, and one accent for what is
+ * lit, the site's own green; what has gone wrong takes the destructive red.
+ */
+:root {
+    --iso-body: #ececf0;
+    --iso-deck: #f8f8fa;
+    --iso-line: #8e8e98;
+    --iso-detail: #c6c6ce;
+    --iso-recess: #dedee4;
+    --iso-ink: #6b6b75;
+    --iso-paper: #ffffff;
+    --iso-glow: var(--ring);
+    --iso-alert: var(--destructive);
+}
+
+.dark {
+    --iso-body: #121216;
+    --iso-deck: #18181d;
+    --iso-line: #3a3a46;
+    --iso-detail: #2a2a33;
+    --iso-recess: #0a0a0d;
+    --iso-ink: #868690;
+    --iso-paper: #1d1d23;
+}
+
+.iso {
+    overflow: visible;
+
+    .face {
+        fill: var(--iso-body);
+        stroke: var(--iso-line);
+        stroke-width: 1;
+        stroke-linejoin: round;
+        vector-effect: non-scaling-stroke;
+    }
+    .face.top {
+        fill: var(--iso-deck);
+    }
+    .face.recess {
+        fill: var(--iso-recess);
+    }
+    .detail {
+        fill: none;
+        stroke: var(--iso-detail);
+        stroke-width: 1;
+        stroke-linecap: round;
+        vector-effect: non-scaling-stroke;
+    }
+    .wire {
+        fill: none;
+        stroke: var(--iso-line);
+        stroke-width: 1.2;
+        stroke-linejoin: round;
+        vector-effect: non-scaling-stroke;
+    }
+    .label {
+        font-family: ui-monospace, 'SF Mono', 'Cascadia Code', Menlo, Consolas, monospace;
+        fill: var(--iso-ink);
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+    }
+    .ghost {
+        fill: none;
+        stroke: var(--iso-glow);
+        stroke-width: 1.2;
+        stroke-dasharray: 4 6;
+        stroke-linejoin: round;
+        vector-effect: non-scaling-stroke;
+    }
+    .halo {
+        fill: var(--iso-glow);
+        opacity: 0.28;
+    }
+    .hot .face {
+        stroke: var(--iso-glow);
+    }
+    .hot .face.top {
+        fill: color-mix(in srgb, var(--iso-glow) 30%, var(--iso-deck));
+    }
+    .hot .face.side {
+        fill: color-mix(in srgb, var(--iso-glow) 14%, var(--iso-body));
+    }
+    .led {
+        fill: var(--iso-detail);
+    }
+    .led.on {
+        fill: var(--iso-glow);
+    }
+    .led.alert {
+        fill: var(--iso-alert);
+        animation: iso-blink 1.1s steps(2, jump-none) infinite;
+    }
+    .pulse {
+        fill: none;
+        stroke: var(--iso-glow);
+        stroke-width: 2.5;
+        stroke-linecap: round;
+        stroke-dasharray: 26 400;
+        vector-effect: non-scaling-stroke;
+        animation: iso-flow 2.4s linear infinite;
+        animation-delay: calc(var(--i, 0) * 0.35s);
+    }
+    .face.paper {
+        fill: var(--iso-paper);
+    }
+    .tape,
+    .readout {
+        font-family: ui-monospace, 'SF Mono', 'Cascadia Code', Menlo, Consolas, monospace;
+        letter-spacing: 0.04em;
+    }
+    .tape {
+        fill: var(--iso-ink);
+    }
+    .readout,
+    .tape-line.hot .tape {
+        fill: var(--iso-glow);
+    }
+    .tape-line {
+        translate: 0 var(--v);
+        transition:
+            translate 0.5s ease,
+            opacity 0.5s ease;
+    }
+    .spark {
+        fill: var(--iso-glow);
+        animation: iso-drift 7s ease-in-out infinite;
+        animation-delay: calc(var(--i, 0) * -1.6s);
+    }
+    /* The dashed outline of what is not there walks slowly around its edges. */
+    .ghost {
+        animation: iso-march 3s linear infinite;
+    }
+    /* What hangs in the air rises and sinks, each part a little after the one below it. */
+    .float {
+        animation: iso-float 5s ease-in-out infinite;
+        animation-delay: calc(var(--i, 0) * -0.8s);
+    }
+    /* The plane that reads a package, up and down its height. */
+    .scan {
+        fill: color-mix(in srgb, var(--iso-glow) 16%, transparent);
+        stroke: var(--iso-glow);
+        stroke-width: 1.2;
+        stroke-linejoin: round;
+        vector-effect: non-scaling-stroke;
+        animation: iso-scan 1.8s ease-in-out infinite alternate;
+    }
+}
+
+@keyframes iso-march {
+    to {
+        stroke-dashoffset: -20;
+    }
+}
+
+@keyframes iso-float {
+    0%,
+    100% {
+        translate: 0 0;
+    }
+    50% {
+        translate: 0 -6px;
+    }
+}
+
+@keyframes iso-scan {
+    from {
+        translate: 0 0;
+    }
+    to {
+        translate: 0 -70px;
+    }
+}
+
+@keyframes iso-blink {
+    from {
+        opacity: 1;
+    }
+    to {
+        opacity: 0.25;
+    }
+}
+
+@keyframes iso-flow {
+    from {
+        stroke-dashoffset: 26;
+    }
+    to {
+        stroke-dashoffset: -400;
+    }
+}
+
+@keyframes iso-drift {
+    0%,
+    100% {
+        translate: 0 0;
+        opacity: 0.35;
+    }
+    50% {
+        translate: 0 -8px;
+        opacity: 0.9;
+    }
+}
