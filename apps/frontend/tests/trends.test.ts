@@ -74,7 +74,9 @@ describe('monthTicks', () => {
     it('thins out to what the width has room for', () => {
         const from = Date.parse('2023-11-05');
         const to = Date.parse('2026-11-04');
-        expect(monthTicks(from, to, 2000).length).toBe(36);
+        // Each label takes 80 px: 36 months fit in 3000 px, every second one in 2000 px, and only a few in 400 px.
+        expect(monthTicks(from, to, 3000).length).toBe(36);
+        expect(monthTicks(from, to, 2000).length).toBe(18);
         expect(monthTicks(from, to, 400).length).toBeLessThanOrEqual(5);
     });
 });
