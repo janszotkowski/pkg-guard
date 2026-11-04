@@ -31,6 +31,12 @@ export const MIGRATIONS: readonly string[] = [
     );
     CREATE INDEX analyses_queue ON analyses (status, requested_at);
     `,
+    // The part-by-part numbers arrive after the result. `exports_until` is when a worker that said nothing is given up on.
+    `
+    ALTER TABLE analyses ADD COLUMN exports TEXT;
+    ALTER TABLE analyses ADD COLUMN exports_status TEXT CHECK (exports_status IN ('pending', 'done', 'unavailable'));
+    ALTER TABLE analyses ADD COLUMN exports_until INTEGER;
+    `,
 ];
 
 export const openDatabase = (path: string): Database => {

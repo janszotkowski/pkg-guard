@@ -1,33 +1,42 @@
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 import { gzip as gzipCallback, brotliCompress as brotliCallback, constants } from 'node:zlib';
 import { promisify } from 'node:util';
+import type { AnalysisResult } from '@pkg-guard/core';
 import { rolldown, VERSION } from 'rolldown';
-import { AnalysisError } from './failure.ts';
+import { createExternal, isFatalUnresolved, type NodeUse } from './external.ts';
+import { AnalysisError, NoEntryError } from './failure.ts';
 
 const gzip = promisify(gzipCallback);
 const brotli = promisify(brotliCallback);
 
 export const BUNDLER = { name: 'rolldown', version: VERSION };
 
-const escapeRegExp = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+export type Bundle = { files: Buffer[]; exports: string[]; environment: AnalysisResult['environment'] };
 
 /**
- * The bundle's files. Only the bundler reads the package here: it parses the code and never runs it. An import that
- * cannot be resolved is a failure, not a smaller number, and so is a bundle with nothing of the package in it: both would
- * otherwise show a few bytes as if that were the package's real size.
+ * The bundle's files, what its entry exports and what it needs that no browser has. Only the bundler reads the package
+ * here: it parses the code and never runs it. An entry that cannot be resolved throws, and so does a bundle with nothing
+ * of the package in it: both would otherwise show a few bytes as if that were the package's real size.
  */
-export const bundle = async (entry: string, cwd: string, peers: readonly string[]): Promise<Buffer[]> => {
-    const unresolved: string[] = [];
+export const bundle = async (entry: string, cwd: string, peers: readonly string[]): Promise<Bundle> => {
+    const fatal: string[] = [];
+    let unresolvedImports = 0;
+    const use: NodeUse = { builtins: new Set(), nativeAddons: new Set() };
     let files: Buffer[];
+    let exports: string[];
     let modules: string[];
     try {
         const build = await rolldown({
             input: entry,
             cwd,
             platform: 'browser',
-            external: peers.map((peer) => new RegExp(`^${escapeRegExp(peer)}(?:/|$)`)),
+            external: createExternal({ peers, use, isInstalled: (name) => existsSync(join(cwd, 'node_modules', name)) }),
             transform: { define: { 'process.env.NODE_ENV': '"production"' } },
             onLog: (_level, log) => {
-                if (log.code === 'UNRESOLVED_IMPORT') unresolved.push(log.message);
+                if (log.code !== 'UNRESOLVED_IMPORT') return;
+                unresolvedImports++;
+                if (isFatalUnresolved(log.message)) fatal.push(log.message);
             },
         });
         const { output } = await build.generate({ format: 'esm', minify: true });
@@ -36,14 +45,17 @@ export const bundle = async (entry: string, cwd: string, peers: readonly string[
             if (file.type === 'chunk') return Buffer.from(file.code);
             return typeof file.source === 'string' ? Buffer.from(file.source) : Buffer.from(file.source);
         });
+        exports = output.flatMap((file) => (file.type === 'chunk' && file.isEntry ? file.exports : []));
         modules = output.flatMap((file) => (file.type === 'chunk' ? Object.keys(file.modules) : []));
     } catch (error) {
         throw new AnalysisError('BUNDLE_FAILED', error instanceof Error ? error.message : String(error));
     }
-    if (unresolved.length > 0) throw new AnalysisError('BUNDLE_FAILED', unresolved.join('\n'));
+    if (fatal.length > 0) throw new NoEntryError(fatal.join('\n'));
     if (!modules.some((id) => id.includes('node_modules'))) throw new AnalysisError('BUNDLE_FAILED', 'The bundle contains nothing of the package');
-    return files;
+    return { files, exports, environment: { nodeBuiltins: [...use.builtins].sort(), nativeAddons: use.nativeAddons.size, unresolvedImports } };
 };
+
+const total = (buffers: readonly Buffer[]): number => buffers.reduce((sum, buffer) => sum + buffer.length, 0);
 
 /** Compression runs on libuv's threads, so it does not hold up the process. Each file is compressed on its own, as a server would send it. */
 export const compress = async (files: readonly Buffer[]): Promise<{ minified: number; gzip: number; brotli: number }> => {
@@ -51,6 +63,11 @@ export const compress = async (files: readonly Buffer[]): Promise<{ minified: nu
         Promise.all(files.map((file) => gzip(file, { level: 9 }))),
         Promise.all(files.map((file) => brotli(file, { params: { [constants.BROTLI_PARAM_QUALITY]: 11, [constants.BROTLI_PARAM_SIZE_HINT]: file.length } }))),
     ]);
-    const total = (buffers: readonly Buffer[]): number => buffers.reduce((sum, buffer) => sum + buffer.length, 0);
     return { minified: total(files), gzip: total(gzipped), brotli: total(brotlied) };
 };
+
+/** A part of a package: brotli at its highest quality would cost most of the time here, for a number nobody compares parts by. */
+export const compressPart = async (files: readonly Buffer[]): Promise<{ minified: number; gzip: number }> => ({
+    minified: total(files),
+    gzip: total(await Promise.all(files.map((file) => gzip(file, { level: 9 })))),
+});

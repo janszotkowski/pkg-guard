@@ -4,7 +4,7 @@ import { rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { PackageRef } from '@pkg-guard/core';
 import type { Config } from '@config/env.ts';
-import type { AnalyzeOutcome, AnalyzeRequest } from './protocol.ts';
+import type { AnalyzeMessage, AnalyzeRequest } from './protocol.ts';
 
 /**
  * Only what running pnpm needs. Above all not `WORKER_TOKEN`: the process that handles a package has no secret to lose.
@@ -23,41 +23,54 @@ const analysisEnv = (): NodeJS.ProcessEnv => {
 
 /**
  * One analysis in a process of its own, in its own process group, so that a package that hangs the bundler, or a pnpm
- * below it, can be killed whole. Its folder is removed whatever happened.
+ * below it, can be killed whole. `onMessage` hears the messages in order, one at a time, and always hears an end: when
+ * the process dies, what it still owed is reported as failed. Its folder is removed whatever happened.
  */
-export const runAnalysis = async (ref: PackageRef, config: Pick<Config, 'WORKER_DIR' | 'JOB_TIMEOUT_MS' | 'MAX_INSTALL_BYTES'>): Promise<AnalyzeOutcome> => {
+export const runAnalysis = async (
+    ref: PackageRef,
+    config: Pick<Config, 'WORKER_DIR' | 'JOB_TIMEOUT_MS' | 'MAX_INSTALL_BYTES' | 'PARTS_BUDGET_MS'>,
+    onMessage: (message: AnalyzeMessage) => Promise<void>,
+): Promise<void> => {
     const dir = join(config.WORKER_DIR, 'jobs', randomUUID());
-    const request: AnalyzeRequest = { package: ref, options: { dir, storeDir: join(config.WORKER_DIR, 'store'), maxInstallBytes: config.MAX_INSTALL_BYTES } };
+    const request: AnalyzeRequest = {
+        package: ref,
+        options: { dir, storeDir: join(config.WORKER_DIR, 'store'), maxInstallBytes: config.MAX_INSTALL_BYTES, partsBudgetMs: config.PARTS_BUDGET_MS },
+    };
+    let handled = Promise.resolve();
+    let answered = false;
+    let finished = false;
+    const deliver = (message: AnalyzeMessage): void => {
+        if (message.kind === 'result' || message.kind === 'failure') answered = true;
+        if (message.kind === 'failure' || message.kind === 'exports' || message.kind === 'exports-failure') finished = true;
+        handled = handled.then(() => onMessage(message));
+    };
+
     try {
-        return await new Promise<AnalyzeOutcome>((resolve) => {
+        await new Promise<void>((resolve) => {
             const child = fork(new URL('./main.analyze.mjs', import.meta.url), { env: analysisEnv(), detached: true, execArgv: ['--max-old-space-size=2048'] });
-            let settled = false;
-            const settle = (outcome: AnalyzeOutcome): void => {
-                if (settled) return;
-                settled = true;
+            let timedOut = false;
+            const end = (reason: string): void => {
                 clearTimeout(timer);
-                resolve(outcome);
+                if (!answered) deliver({ kind: 'failure', failure: { code: timedOut ? 'TIMEOUT' : 'INTERNAL', message: reason } });
+                else if (!finished) deliver({ kind: 'exports-failure' });
+                resolve();
             };
-            const killGroup = (): void => {
+            const timer = setTimeout(() => {
+                timedOut = true;
                 if (child.pid === undefined) return;
                 try {
                     process.kill(-child.pid, 'SIGKILL');
                 } catch {
                     // The group is already gone.
                 }
-            };
-            const timer = setTimeout(() => {
-                killGroup();
-                settle({ ok: false, failure: { code: 'TIMEOUT', message: `The analysis took longer than ${config.JOB_TIMEOUT_MS} ms` } });
             }, config.JOB_TIMEOUT_MS);
 
-            child.once('message', (message) => {
-                settle(message as AnalyzeOutcome);
-            });
-            child.once('error', (error) => settle({ ok: false, failure: { code: 'INTERNAL', message: error.message } }));
-            child.once('exit', (code, signal) => settle({ ok: false, failure: { code: 'INTERNAL', message: `The analysis process ended early (${signal ?? code})` } }));
+            child.on('message', (message) => deliver(message as AnalyzeMessage));
+            child.once('error', (error) => end(error.message));
+            child.once('exit', (code, signal) => end(timedOut ? `The analysis took longer than ${config.JOB_TIMEOUT_MS} ms` : `The analysis process ended early (${signal ?? code})`));
             child.send(request);
         });
+        await handled;
     } finally {
         await rm(dir, { recursive: true, force: true });
     }

@@ -1,17 +1,21 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
-import { analysisFailureSchema, analysisResultSchema, isExactVersion, parseSpec } from '@pkg-guard/core';
+import { MAX_SEARCH_LENGTH, MIN_SEARCH_LENGTH, analysisFailureSchema, analysisResultSchema, exportDetailsSchema, isExactVersion, parseSpec, type AnalysisResponse } from '@pkg-guard/core';
 import { Hono } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
-import type { VersionResolver } from '@modules/analyses/infrastructure/registry.ts';
+import type { PackageSearcher, VersionResolver } from '@modules/analyses/infrastructure/registry.ts';
 import type { AnalysisStore } from '@modules/analyses/infrastructure/store.ts';
 import { AppError } from '@platform/errors.ts';
 import type { AppEnv } from '@platform/http/app.ts';
 
 const DAY_SECONDS = 86_400;
 const TAG_SECONDS = 300;
+const SEARCH_SECONDS = 300;
+
+/** Anything still changing is asked for again, so it must not be kept. */
+const isSettled = (answer: AnalysisResponse): boolean => answer.status === 'done' && answer.exports.status !== 'pending';
 
 /** The public API: what a package costs. */
-export const analysisRoutes = (store: AnalysisStore, resolve: VersionResolver): Hono<AppEnv> => {
+export const analysisRoutes = (store: AnalysisStore, resolve: VersionResolver, search: PackageSearcher): Hono<AppEnv> => {
     const routes = new Hono<AppEnv>();
 
     routes.get('/analyses', async (c) => {
@@ -24,8 +28,15 @@ export const analysisRoutes = (store: AnalysisStore, resolve: VersionResolver): 
         const answer = known?.status === 'failed' || known === undefined ? store.findOrEnqueue({ name: spec.name, version: await resolve(spec.name, spec.version ?? 'latest') }) : known;
 
         // A finished result of an exact version does not change until the analyzer does; what a tag points to does.
-        c.header('cache-control', answer.status !== 'done' ? 'no-store' : `public, max-age=${exact ? DAY_SECONDS : TAG_SECONDS}`);
+        c.header('cache-control', isSettled(answer) ? `public, max-age=${exact ? DAY_SECONDS : TAG_SECONDS}` : 'no-store');
         return c.json(answer);
+    });
+
+    routes.get('/search', async (c) => {
+        const query = (c.req.query('q') ?? '').trim();
+        if (query.length < MIN_SEARCH_LENGTH || query.length > MAX_SEARCH_LENGTH) throw new AppError('VALIDATION_FAILED', `q must be ${MIN_SEARCH_LENGTH} to ${MAX_SEARCH_LENGTH} characters`);
+        c.header('cache-control', `public, max-age=${SEARCH_SECONDS}`);
+        return c.json({ packages: await search(query) });
     });
 
     return routes;
@@ -49,7 +60,8 @@ export const workerRoutes = (store: AnalysisStore, workerToken: string): Hono<Ap
         if (token === undefined || !sameSecret(token, workerToken)) throw new AppError('UNAUTHORIZED', 'A valid worker token is required');
         await next();
     });
-    routes.use(bodyLimit({ maxSize: 64 * 1024 }));
+    // The largest body is a package's list of exports, with a name and two sizes for each.
+    routes.use(bodyLimit({ maxSize: 512 * 1024 }));
 
     routes.post('/jobs/claim', (c) => c.json({ job: store.claim() ?? null }));
 
@@ -64,6 +76,14 @@ export const workerRoutes = (store: AnalysisStore, workerToken: string): Hono<Ap
         if (!failure.success) throw new AppError('VALIDATION_FAILED', 'The failure does not match the contract');
         return c.json({ accepted: store.fail(jobId(c.req.param('id')), failure.data) });
     });
+
+    routes.post('/jobs/:id/exports', async (c) => {
+        const details = exportDetailsSchema.safeParse(await c.req.json());
+        if (!details.success) throw new AppError('VALIDATION_FAILED', 'The export details do not match the contract');
+        return c.json({ accepted: store.completeExports(jobId(c.req.param('id')), details.data) });
+    });
+
+    routes.post('/jobs/:id/exports-failure', (c) => c.json({ accepted: store.failExports(jobId(c.req.param('id'))) }));
 
     return routes;
 };

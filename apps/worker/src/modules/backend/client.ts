@@ -1,4 +1,4 @@
-import { claimResponseSchema, isExactVersion, isValidPackageName, type AnalysisFailure, type AnalysisResult, type Job } from '@pkg-guard/core';
+import { claimResponseSchema, isExactVersion, isValidPackageName, type AnalysisFailure, type AnalysisResult, type ExportDetails, type Job } from '@pkg-guard/core';
 import type { Config } from '@config/env.ts';
 
 const TIMEOUT_MS = 10_000;
@@ -29,6 +29,12 @@ export const createBackendClient = (config: Pick<Config, 'BACKEND_URL' | 'WORKER
         },
         fail: async (id: number, failure: AnalysisFailure): Promise<void> => {
             await post(`/internal/jobs/${id}/failure`, failure);
+        },
+        completeExports: async (id: number, details: ExportDetails): Promise<void> => {
+            await post(`/internal/jobs/${id}/exports`, details);
+        },
+        failExports: async (id: number): Promise<void> => {
+            await post(`/internal/jobs/${id}/exports-failure`);
         },
     };
 };

@@ -6,7 +6,7 @@
 
 ## Run it locally
 
-You need Node 24 and pnpm 12.
+You need Node 24, pnpm 12 and Docker.
 
 ```bash
 pnpm install
@@ -18,7 +18,13 @@ pnpm dev
 - Frontend: http://localhost:3100
 - API: http://127.0.0.1:4100/v1/health
 
-`pnpm dev` also starts the worker. It stays idle until you search for a package, and then downloads that package and its dependencies from npm into a folder in the system's temp directory, without running any of their scripts.
+`pnpm dev` also starts the worker in Docker. It stays idle until you look up a package, and then downloads that package and its dependencies from npm without running any of their scripts. They stay on a Docker volume, never on your machine, and the worker refuses to run outside Docker. The worker keeps running after `pnpm dev` ends.
+
+```bash
+pnpm worker:logs    # what the worker is doing
+pnpm worker:stop    # stop it, keeping what it downloaded
+pnpm worker:clean   # stop it and delete everything it downloaded
+```
 
 ## Commands
 

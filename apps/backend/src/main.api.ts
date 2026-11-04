@@ -2,7 +2,7 @@ import { serve } from '@hono/node-server';
 import { createApp } from '@composition/app.ts';
 import { loadConfig } from '@config/env.ts';
 import { openDatabase } from '@modules/analyses/infrastructure/database.ts';
-import { resolveFromRegistry } from '@modules/analyses/infrastructure/registry.ts';
+import { resolveFromRegistry, searchRegistry } from '@modules/analyses/infrastructure/registry.ts';
 import { createAnalysisStore } from '@modules/analyses/infrastructure/store.ts';
 import { createLogger } from '@platform/logger.ts';
 
@@ -31,7 +31,7 @@ const store = createAnalysisStore(db, {
     failedRetryMs: config.JOB_FAILED_RETRY_MINUTES * 60_000,
 });
 
-const server = serve({ fetch: createApp({ config, logger, store, resolve: resolveFromRegistry }).fetch, port: config.PORT, hostname: config.HOST }, (address) => {
+const server = serve({ fetch: createApp({ config, logger, store, resolve: resolveFromRegistry, search: searchRegistry }).fetch, port: config.PORT, hostname: config.HOST }, (address) => {
     logger.info({ port: address.port, host: config.HOST, database: config.DATABASE_PATH }, 'api listening');
 });
 

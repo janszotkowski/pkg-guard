@@ -6,7 +6,7 @@ import { copyFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 const root = new URL('..', import.meta.url).pathname;
-const targets = ['apps/backend', 'apps/worker', 'apps/frontend'];
+const targets = ['apps/backend', 'apps/frontend'];
 
 for (const target of targets) {
     const example = join(root, target, '.env.example');

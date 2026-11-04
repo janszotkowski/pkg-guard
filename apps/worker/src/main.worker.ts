@@ -25,15 +25,27 @@ const slot = async (index: number): Promise<void> => {
                 waitForWork = true;
             } else {
                 const started = performance.now();
-                const outcome = await runAnalysis(job.package, config);
-                const ms = Math.round(performance.now() - started);
-                if (outcome.ok) {
-                    await backend.complete(job.id, outcome.result);
-                    logger.info({ package: job.package, ms, sizes: outcome.result.sizes }, 'analyzed');
-                } else {
-                    await backend.fail(job.id, outcome.failure);
-                    logger.warn({ package: job.package, ms, failure: outcome.failure }, 'analysis failed');
-                }
+                const ms = (): number => Math.round(performance.now() - started);
+                await runAnalysis(job.package, config, async (message) => {
+                    switch (message.kind) {
+                        case 'result':
+                            await backend.complete(job.id, message.result);
+                            logger.info({ package: job.package, ms: ms(), sizes: message.result.sizes }, 'analyzed');
+                            break;
+                        case 'failure':
+                            await backend.fail(job.id, message.failure);
+                            logger.warn({ package: job.package, ms: ms(), failure: message.failure }, 'analysis failed');
+                            break;
+                        case 'exports':
+                            await backend.completeExports(job.id, message.exports);
+                            logger.info({ package: job.package, ms: ms(), named: message.exports.named.length, subpaths: message.exports.subpaths.length }, 'exports measured');
+                            break;
+                        case 'exports-failure':
+                            await backend.failExports(job.id);
+                            logger.warn({ package: job.package, ms: ms() }, 'exports not measured');
+                            break;
+                    }
+                });
             }
         } catch (error) {
             // The backend may simply not be up yet: try again in a while.

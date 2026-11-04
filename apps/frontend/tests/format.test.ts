@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { formatSize, formatSizeText } from '@lib/format';
+import { formatCount, formatSize, formatSizeText } from '@lib/format';
+
+describe('formatCount', () => {
+    it('shortens large counts', () => {
+        expect(formatCount(950)).toBe('950');
+        expect(formatCount(89_744_743)).toBe('89.7M');
+    });
+});
 
 describe('formatSize', () => {
     it.each([

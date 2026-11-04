@@ -1,0 +1,18 @@
+# Nothing built or installed on the host goes into an image: the image builds from the sources.
+**/node_modules
+**/dist
+**/.output
+**/.turbo
+**/.tanstack
+**/data
+.git
+.github
+.idea
+.cursor
+.claude
+.env
+**/.env
+**/.env.*
+!**/.env.example
+*.log
+.DS_Store

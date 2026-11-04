@@ -1,0 +1,36 @@
+# The worker, the one part of the project that downloads npm packages, isolated from the machine: `pnpm dev` starts it.
+# What it downloads stays on the `worker-data` volume, inside Docker. `pnpm worker:clean` removes all of it.
+
+services:
+    worker:
+        build:
+            context: .
+            target: worker
+        restart: unless-stopped
+        logging:
+            driver: json-file
+            options:
+                max-size: 10m
+                max-file: '3'
+        # A read-only root filesystem (only its volume and /tmp take writes), no Linux capabilities, no privilege gain
+        # through setuid binaries, and a cap on memory and processes: a package is untrusted input.
+        read_only: true
+        cap_drop: [ALL]
+        security_opt: ['no-new-privileges:true']
+        mem_limit: 3g
+        pids_limit: 512
+        tmpfs: ['/tmp:size=512m']
+        environment:
+            LOG_LEVEL: ${LOG_LEVEL:-info}
+            # The backend runs on the machine itself during development (`pnpm dev`). On Linux it must listen on more than
+            # 127.0.0.1 for this to reach it (HOST in apps/backend/.env); Docker Desktop on a Mac needs nothing.
+            BACKEND_URL: ${BACKEND_URL:-http://host.docker.internal:4100}
+            # The value in apps/backend/.env.example, which production refuses. Another value there needs the same one here.
+            WORKER_TOKEN: ${WORKER_TOKEN:-local-development-only-not-a-secret}
+        extra_hosts:
+            - 'host.docker.internal:host-gateway'
+        volumes:
+            - worker-data:/work
+
+volumes:
+    worker-data:

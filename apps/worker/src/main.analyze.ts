@@ -1,14 +1,27 @@
 import { analyze } from '@modules/analysis/analyze.ts';
 import { toFailure } from '@modules/analysis/failure.ts';
-import type { AnalyzeOutcome, AnalyzeRequest } from '@modules/analysis/protocol.ts';
+import type { AnalyzeMessage, AnalyzeRequest } from '@modules/analysis/protocol.ts';
 
-/** The process of one analysis (`runner.ts`): takes one request, answers once and ends. */
+const send = (message: AnalyzeMessage): Promise<void> =>
+    new Promise((resolve) => {
+        process.send?.(message, () => resolve());
+    });
+
+/** The process of one analysis (`runner.ts`): takes one request, answers as it goes and ends. */
 process.once('message', (message) => {
     const request = message as AnalyzeRequest;
-    void analyze(request.package, request.options)
-        .then((result): AnalyzeOutcome => ({ ok: true, result }))
-        .catch((error: unknown): AnalyzeOutcome => ({ ok: false, failure: toFailure(error, request.options.dir) }))
-        .then((outcome) => {
-            process.send?.(outcome, () => process.exit(0));
-        });
+    void (async () => {
+        try {
+            const analysis = await analyze(request.package, request.options);
+            await send({ kind: 'result', result: analysis.result });
+            try {
+                await send({ kind: 'exports', exports: await analysis.measureParts() });
+            } catch {
+                await send({ kind: 'exports-failure' });
+            }
+        } catch (error) {
+            await send({ kind: 'failure', failure: toFailure(error, request.options.dir) });
+        }
+        process.exit(0);
+    })();
 });

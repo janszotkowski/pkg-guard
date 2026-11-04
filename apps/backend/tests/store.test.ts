@@ -1,15 +1,31 @@
 import { describe, expect, it } from 'vitest';
-import type { AnalysisResult } from '@pkg-guard/core';
+import type { AnalysisResult, ExportDetails } from '@pkg-guard/core';
 import { openDatabase } from '@modules/analyses/infrastructure/database.ts';
 import { createAnalysisStore } from '@modules/analyses/infrastructure/store.ts';
 
 const RESULT: AnalysisResult = {
     bundler: { name: 'rolldown', version: '1.0.0' },
     entry: 'export-star',
+    commands: [],
     sizes: { minified: 300, gzip: 200, brotli: 100 },
     install: { bytes: 1000, packages: 1 },
     peerDependencies: [],
+    description: 'An example',
+    environment: { nodeBuiltins: [], nativeAddons: 0, unresolvedImports: 0 },
+    repositoryUrl: 'https://github.com/owner/example',
     timingsMs: { install: 1, bundle: 1, compress: 1 },
+};
+
+const DETAILS: ExportDetails = {
+    format: 'esm',
+    sideEffectsFree: true,
+    named: [{ name: 'add', minified: 80, gzip: 60 }],
+    namedTotal: 1,
+    namedFailed: 0,
+    subpaths: [{ path: './client', minified: 40, gzip: 30 }],
+    subpathsTotal: 1,
+    subpathsFailed: 0,
+    subpathPatterns: 0,
 };
 
 const REF = { name: 'example', version: '1.0.0' };
@@ -36,6 +52,33 @@ describe('analysis store', () => {
         expect(store.findOrEnqueue(REF).status).toBe('running');
         expect(store.complete(job?.id ?? 0, RESULT)).toBe(true);
         expect(store.find(REF)).toMatchObject({ status: 'done', result: RESULT });
+    });
+
+    it('awaits the part-by-part numbers after the result, then serves them', () => {
+        const { store } = setup();
+        store.findOrEnqueue(REF);
+        const id = store.claim()?.id ?? 0;
+        store.complete(id, RESULT);
+        expect(store.find(REF)).toMatchObject({ status: 'done', exports: { status: 'pending' } });
+        expect(store.completeExports(id, DETAILS)).toBe(true);
+        expect(store.find(REF)).toMatchObject({ status: 'done', result: RESULT, exports: { status: 'done', details: DETAILS } });
+    });
+
+    it('keeps the result when the part-by-part numbers fail', () => {
+        const { store } = setup();
+        store.findOrEnqueue(REF);
+        const id = store.claim()?.id ?? 0;
+        store.complete(id, RESULT);
+        expect(store.failExports(id)).toBe(true);
+        expect(store.find(REF)).toMatchObject({ status: 'done', result: RESULT, exports: { status: 'unavailable' } });
+    });
+
+    it('stops waiting for the numbers of a worker that went silent', () => {
+        const { clock, store } = setup();
+        store.findOrEnqueue(REF);
+        store.complete(store.claim()?.id ?? 0, RESULT);
+        clock.now += 100;
+        expect(store.find(REF)).toMatchObject({ status: 'done', exports: { status: 'unavailable' } });
     });
 
     it('takes a job from a silent worker, then gives up after its attempts', () => {

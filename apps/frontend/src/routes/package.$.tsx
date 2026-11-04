@@ -1,9 +1,11 @@
 import { parseSpec, type AnalysisFailure } from '@pkg-guard/core';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { createFileRoute, notFound } from '@tanstack/react-router';
+import { ExportSizes } from '@components/ExportSizes';
 import { IsoAnalyzing } from '@components/iso/IsoAnalyzing';
 import { IsoOffline } from '@components/iso/IsoOffline';
 import { NotFound } from '@components/NotFound';
+import { PackageLinks } from '@components/PackageLinks';
 import { SizeResult } from '@components/SizeResult';
 import { siteConfig } from '@config/site';
 import { ApiError, analysisQuery } from '@lib/api';
@@ -16,45 +18,80 @@ const FAILURE_TEXT: Record<AnalysisFailure['code'], string> = {
     INTERNAL: 'Something went wrong while measuring the package.',
 };
 
-type PendingProps = { status: 'queued' | 'running' };
+type PendingProps = {
+    status: 'queued' | 'running';
+    /** The last time the page asked, it got no usable answer: what it shows may be out of date. */
+    stalled: boolean;
+};
+
+const pendingText = (props: PendingProps): string => {
+    if (props.stalled) return 'Could not get an update from the server. Still trying…';
+    return props.status === 'queued' ? 'Waiting for a free worker…' : 'Installing and bundling the package…';
+};
 
 /** The analysis runs in the worker; the page asks again every second until it has an answer. */
 const Pending = (props: PendingProps) => (
     <div
         role={'status'}
-        className={'flex flex-col items-start gap-4'}
+        className={'flex w-full flex-col items-center gap-4'}
     >
         <IsoAnalyzing className={'h-auto w-full max-w-sm'} />
-        <p className={'text-callout text-muted-foreground'}>{props.status === 'queued' ? 'Waiting for a free worker…' : 'Installing and bundling the package…'}</p>
+        <p className={'text-callout text-muted-foreground'}>{pendingText(props)}</p>
     </div>
 );
 
 type FailedProps = { failure: AnalysisFailure };
 
 const Failed = (props: FailedProps) => (
-    <div className={'flex flex-col items-start gap-4'}>
+    <div className={'flex w-full flex-col items-center gap-4'}>
         <IsoOffline className={'h-auto w-full max-w-64'} />
         <p className={'text-headline'}>{FAILURE_TEXT[props.failure.code]}</p>
-        <pre className={'max-w-full overflow-auto border-l-2 pl-4 text-code whitespace-pre-wrap text-muted-foreground'}>{props.failure.message}</pre>
+        <pre className={'max-w-full overflow-auto text-left text-code whitespace-pre-wrap text-muted-foreground'}>{props.failure.message}</pre>
     </div>
 );
 
 const PackagePage = () => {
     const spec = Route.useParams()._splat ?? '';
-    const { data } = useSuspenseQuery(analysisQuery(spec));
+    const { data, isRefetchError } = useSuspenseQuery(analysisQuery(spec));
+    // While there is nothing to read yet, the page holds one thing, in its middle.
+    const finished = data.status === 'done';
 
     return (
         <main
             id={'main'}
             tabIndex={-1}
-            className={'mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-4 py-10 sm:py-14'}
+            className={
+                finished
+                    ? 'mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-4 py-10 sm:py-14'
+                    : 'mx-auto flex w-full max-w-2xl flex-1 flex-col items-center justify-center gap-6 px-4 py-14 text-center'
+            }
         >
-            <h1 className={'text-title-1 break-words'}>
-                {data.package.name}
-                <span className={'text-muted-foreground'}>@{data.package.version}</span>
-            </h1>
-            {(data.status === 'queued' || data.status === 'running') && <Pending status={data.status} />}
-            {data.status === 'done' && <SizeResult result={data.result} />}
+            <div className={finished ? 'flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2' : 'flex flex-col items-center gap-2'}>
+                <h1 className={'min-w-0 text-title-1 break-words'}>
+                    {data.package.name}
+                    <span className={'text-muted-foreground'}>@{data.package.version}</span>
+                </h1>
+                <PackageLinks
+                    package={data.package}
+                    repositoryUrl={finished ? data.result.repositoryUrl : undefined}
+                />
+                {finished && data.result.description !== null && <p className={'w-full max-w-3xl text-headline font-normal text-muted-foreground'}>{data.result.description}</p>}
+            </div>
+            {(data.status === 'queued' || data.status === 'running') && (
+                <Pending
+                    status={data.status}
+                    stalled={isRefetchError}
+                />
+            )}
+            {data.status === 'done' && (
+                <>
+                    <SizeResult result={data.result} />
+                    <ExportSizes
+                        exports={data.exports}
+                        hasEntry={data.result.sizes !== null}
+                    />
+                </>
+            )}
             {data.status === 'failed' && <Failed failure={data.failure} />}
         </main>
     );

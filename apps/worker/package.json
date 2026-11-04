@@ -2,12 +2,10 @@
     "name": "@pkg-guard/worker",
     "version": "0.0.0",
     "private": true,
-    "description": "Worker: installs one npm package at a time without running its code, bundles it and reports what it costs",
+    "description": "Worker, run only in Docker: installs one npm package at a time without running its code, bundles it and reports what it costs",
     "type": "module",
     "scripts": {
-        "dev": "tsdown --watch --on-success \"node --env-file-if-exists=.env dist/main.worker.mjs\"",
         "build": "tsdown",
-        "start": "node --env-file-if-exists=.env dist/main.worker.mjs",
         "test": "vitest run",
         "typecheck": "tsc -p tsconfig.json"
     },

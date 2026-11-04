@@ -1,40 +1,76 @@
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile, realpath, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import type { AnalysisResult, PackageRef } from '@pkg-guard/core';
-import { BUNDLER, bundle, compress } from './bundle.ts';
-import { entrySource, peerNames, type Manifest } from './entry.ts';
-import { AnalysisError } from './failure.ts';
+import type { AnalysisResult, ExportDetails, PackageRef } from '@pkg-guard/core';
+import { BUNDLER, bundle, compress, type Bundle } from './bundle.ts';
+import { commandsOf, descriptionOf, entrySource, peerNames, type Manifest } from './entry.ts';
+import { AnalysisError, NoEntryError } from './failure.ts';
 import { installPackage, measureInstall } from './install.ts';
+import { measureParts } from './parts.ts';
+import { githubUrl } from './repository.ts';
 
-export type AnalyzeOptions = { dir: string; storeDir: string; maxInstallBytes: number };
+export type AnalyzeOptions = { dir: string; storeDir: string; maxInstallBytes: number; partsBudgetMs: number };
+
+/** The main numbers now, and the part-by-part ones when asked for: they take longer and the page should not wait for them. */
+export type Analysis = { result: AnalysisResult; measureParts: () => Promise<ExportDetails> };
 
 const elapsed = (from: number): number => Math.round(performance.now() - from);
 
 /** One package from nothing to its numbers. The package's code is read, never run. */
-export const analyze = async (ref: PackageRef, options: AnalyzeOptions): Promise<AnalysisResult> => {
+export const analyze = async (ref: PackageRef, options: AnalyzeOptions): Promise<Analysis> => {
     const installStarted = performance.now();
     await installPackage(ref, options.dir, options.storeDir);
     const install = await measureInstall(options.dir, options.maxInstallBytes);
     const installMs = elapsed(installStarted);
 
+    // The temp folder is often reached through a link (`/var` on macOS): the bundler would then name files by long relative paths.
+    const dir = await realpath(options.dir);
+
     let manifest: Manifest;
     try {
-        manifest = JSON.parse(await readFile(join(options.dir, 'node_modules', ref.name, 'package.json'), 'utf8')) as Manifest;
+        manifest = JSON.parse(await readFile(join(dir, 'node_modules', ref.name, 'package.json'), 'utf8')) as Manifest;
     } catch {
         throw new AnalysisError('INSTALL_FAILED', 'The package has no readable package.json');
     }
     const entry = entrySource(ref.name, manifest);
     const peerDependencies = peerNames(manifest);
-    const entryFile = join(options.dir, 'pkg-guard-entry.mjs');
+    const entryFile = join(dir, 'pkg-guard-entry.mjs');
     await writeFile(entryFile, entry.code);
 
     const bundleStarted = performance.now();
-    const files = await bundle(entryFile, options.dir, peerDependencies);
+    let whole: Bundle | undefined;
+    try {
+        whole = await bundle(entryFile, dir, peerDependencies);
+    } catch (error) {
+        if (!(error instanceof NoEntryError)) throw error;
+    }
     const bundleMs = elapsed(bundleStarted);
 
     const compressStarted = performance.now();
-    const sizes = await compress(files);
+    const sizes = whole === undefined ? null : await compress(whole.files);
     const compressMs = elapsed(compressStarted);
 
-    return { bundler: BUNDLER, entry: entry.kind, sizes, install, peerDependencies, timingsMs: { install: installMs, bundle: bundleMs, compress: compressMs } };
+    return {
+        result: {
+            bundler: BUNDLER,
+            entry: whole === undefined ? null : entry.kind,
+            sizes,
+            install,
+            peerDependencies,
+            description: descriptionOf(manifest),
+            commands: commandsOf(ref.name, manifest),
+            environment: whole?.environment ?? { nodeBuiltins: [], nativeAddons: 0, unresolvedImports: 0 },
+            repositoryUrl: githubUrl(manifest.repository),
+            timingsMs: { install: installMs, bundle: bundleMs, compress: compressMs },
+        },
+        measureParts: () =>
+            measureParts({
+                packageName: ref.name,
+                manifest,
+                dir,
+                peers: peerDependencies,
+                exportNames: whole?.exports ?? [],
+                esm: entry.kind === 'export-star',
+                deadline: performance.now() + options.partsBudgetMs,
+            }),
+    };
 };

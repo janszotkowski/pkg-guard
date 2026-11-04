@@ -7,6 +7,11 @@ export const formatSize = (bytes: number): FormattedSize => {
     return { value: (bytes / 1_000_000).toFixed(2), unit: 'MB' };
 };
 
+const COUNT = new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 });
+
+/** A large count at a glance: 89.7M. */
+export const formatCount = (count: number): string => COUNT.format(count);
+
 export const formatSizeText = (bytes: number): string => {
     const size = formatSize(bytes);
     return `${size.value} ${size.unit}`;
