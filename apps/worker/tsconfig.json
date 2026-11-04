@@ -1,0 +1,11 @@
+{
+    "extends": "../../tsconfig.base.json",
+    "compilerOptions": {
+        "types": ["node"],
+        "paths": {
+            "@config/*": ["./src/config/*"],
+            "@modules/*": ["./src/modules/*"]
+        }
+    },
+    "include": ["src", "tests", "vitest.config.ts", "tsdown.config.ts"]
+}

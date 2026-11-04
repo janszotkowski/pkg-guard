@@ -1,0 +1,25 @@
+{
+    "name": "@pkg-guard/worker",
+    "version": "0.0.0",
+    "private": true,
+    "description": "Worker: installs one npm package at a time without running its code, bundles it and reports what it costs",
+    "type": "module",
+    "scripts": {
+        "dev": "tsdown --watch --on-success \"node --env-file-if-exists=.env dist/main.worker.mjs\"",
+        "build": "tsdown",
+        "start": "node --env-file-if-exists=.env dist/main.worker.mjs",
+        "test": "vitest run",
+        "typecheck": "tsc -p tsconfig.json"
+    },
+    "dependencies": {
+        "@pkg-guard/core": "workspace:*",
+        "pino": "10.4.0",
+        "rolldown": "1.2.14",
+        "zod": "4.6.7"
+    },
+    "devDependencies": {
+        "@types/node": "26.6.4",
+        "tsdown": "0.23.0",
+        "vitest": "5.0.3"
+    }
+}
