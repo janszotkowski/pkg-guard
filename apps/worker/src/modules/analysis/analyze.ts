@@ -57,6 +57,7 @@ export const analyze = async (ref: PackageRef, options: AnalyzeOptions): Promise
             install,
             peerDependencies,
             description: descriptionOf(manifest),
+            composition: whole?.composition ?? { packages: [], total: 0 },
             commands: commandsOf(ref.name, manifest),
             environment: whole?.environment ?? { nodeBuiltins: [], nativeAddons: 0, unresolvedImports: 0 },
             repositoryUrl: githubUrl(manifest.repository),

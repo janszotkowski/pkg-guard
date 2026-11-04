@@ -4,7 +4,7 @@ import * as z from 'zod/mini';
  * Which way of measuring a stored result came from. Bump it when the bundler or its settings change: results of the old
  * value are no longer served, and each package is measured again the next time someone asks for it.
  */
-export const ANALYZER_VERSION = 6;
+export const ANALYZER_VERSION = 7;
 
 export const packageRefSchema = z.object({ name: z.string(), version: z.string() });
 
@@ -22,6 +22,11 @@ export const analysisResultSchema = z.object({
     entry: z.nullable(z.enum(ENTRY_KINDS)),
     /** Bytes of the minified bundle, without peer dependencies. */
     sizes: z.nullable(z.object({ minified: z.number(), gzip: z.number(), brotli: z.number() })),
+    /**
+     * The packages in the bundle, largest first, each with its share of it (0 to 1) and how many of its files are in it.
+     * `total` counts them all; the list holds the largest ones. Empty when there is no bundle.
+     */
+    composition: z.object({ packages: z.array(z.object({ name: z.string(), share: z.number(), modules: z.number() })), total: z.number() }),
     /** The commands the package installs (its `bin`). */
     commands: z.array(z.string()),
     /** What an install puts on disk. */

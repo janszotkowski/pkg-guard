@@ -4,6 +4,7 @@ import { gzip as gzipCallback, brotliCompress as brotliCallback, constants } fro
 import { promisify } from 'node:util';
 import type { AnalysisResult } from '@pkg-guard/core';
 import { rolldown, VERSION } from 'rolldown';
+import { compositionOf } from './composition.ts';
 import { createExternal, isFatalUnresolved, type NodeUse } from './external.ts';
 import { AnalysisError, NoEntryError } from './failure.ts';
 
@@ -12,7 +13,7 @@ const brotli = promisify(brotliCallback);
 
 export const BUNDLER = { name: 'rolldown', version: VERSION };
 
-export type Bundle = { files: Buffer[]; exports: string[]; environment: AnalysisResult['environment'] };
+export type Bundle = { files: Buffer[]; exports: string[]; environment: AnalysisResult['environment']; composition: AnalysisResult['composition'] };
 
 /**
  * The bundle's files, what its entry exports and what it needs that no browser has. Only the bundler reads the package
@@ -25,7 +26,7 @@ export const bundle = async (entry: string, cwd: string, peers: readonly string[
     const use: NodeUse = { builtins: new Set(), nativeAddons: new Set() };
     let files: Buffer[];
     let exports: string[];
-    let modules: string[];
+    let modules: [string, number][];
     try {
         const build = await rolldown({
             input: entry,
@@ -46,13 +47,13 @@ export const bundle = async (entry: string, cwd: string, peers: readonly string[
             return typeof file.source === 'string' ? Buffer.from(file.source) : Buffer.from(file.source);
         });
         exports = output.flatMap((file) => (file.type === 'chunk' && file.isEntry ? file.exports : []));
-        modules = output.flatMap((file) => (file.type === 'chunk' ? Object.keys(file.modules) : []));
+        modules = output.flatMap((file) => (file.type === 'chunk' ? Object.entries(file.modules).map(([id, module]): [string, number] => [id, module.renderedLength]) : []));
     } catch (error) {
         throw new AnalysisError('BUNDLE_FAILED', error instanceof Error ? error.message : String(error));
     }
     if (fatal.length > 0) throw new NoEntryError(fatal.join('\n'));
-    if (!modules.some((id) => id.includes('node_modules'))) throw new AnalysisError('BUNDLE_FAILED', 'The bundle contains nothing of the package');
-    return { files, exports, environment: { nodeBuiltins: [...use.builtins].sort(), nativeAddons: use.nativeAddons.size, unresolvedImports } };
+    if (!modules.some(([id]) => id.includes('node_modules'))) throw new AnalysisError('BUNDLE_FAILED', 'The bundle contains nothing of the package');
+    return { files, exports, environment: { nodeBuiltins: [...use.builtins].sort(), nativeAddons: use.nativeAddons.size, unresolvedImports }, composition: compositionOf(modules) };
 };
 
 const total = (buffers: readonly Buffer[]): number => buffers.reduce((sum, buffer) => sum + buffer.length, 0);

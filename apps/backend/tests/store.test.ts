@@ -7,6 +7,7 @@ const RESULT: AnalysisResult = {
     bundler: { name: 'rolldown', version: '1.0.0' },
     entry: 'export-star',
     commands: [],
+    composition: { packages: [{ name: 'example', share: 1, modules: 1 }], total: 1 },
     sizes: { minified: 300, gzip: 200, brotli: 100 },
     install: { bytes: 1000, packages: 1 },
     peerDependencies: [],

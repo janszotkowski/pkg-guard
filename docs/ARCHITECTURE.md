@@ -49,5 +49,6 @@ A package is untrusted code. It is read, never run:
 - **A suspicious result is a failure**: a bundle with nothing of the package in it fails the analysis instead of reporting a few bytes.
 - **A package made for Node.js says so**: Node's own modules and native addons stay out of the bundle and are named on the page, and imports that fail deep in the dependencies, often optional ones, are counted there. The number is then not a browser size, and the page says that too.
 - **Peer dependencies are not counted**: the app brings them anyway.
+- **Composition is an estimate**: the bundler reports each module's size before minifying, so the page shows each package's share of the bundle and works out its minified size from that.
 - **Parts are bundled alone**: an entry point from `exports` or one named export, each in its own bundle, up to `MAX_NAMED` and `PARTS_BUDGET_MS`. The page says what was left out. CommonJS gets no per-export numbers, because bundlers cannot drop parts of it reliably.
 - **Results are versioned**: `ANALYZER_VERSION` in `packages/core` is part of a result's key. Bump it when the way of measuring changes.

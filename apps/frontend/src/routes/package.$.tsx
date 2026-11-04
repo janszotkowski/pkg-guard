@@ -1,6 +1,7 @@
 import { parseSpec, type AnalysisFailure } from '@pkg-guard/core';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { createFileRoute, notFound } from '@tanstack/react-router';
+import { Composition } from '@components/Composition';
 import { ExportSizes } from '@components/ExportSizes';
 import { IsoAnalyzing } from '@components/iso/IsoAnalyzing';
 import { IsoOffline } from '@components/iso/IsoOffline';
@@ -86,6 +87,13 @@ const PackagePage = () => {
             {data.status === 'done' && (
                 <>
                     <SizeResult result={data.result} />
+                    {data.result.sizes !== null && (
+                        <Composition
+                            composition={data.result.composition}
+                            minified={data.result.sizes.minified}
+                            packageName={data.package.name}
+                        />
+                    )}
                     <ExportSizes
                         exports={data.exports}
                         hasEntry={data.result.sizes !== null}
