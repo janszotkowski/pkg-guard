@@ -47,6 +47,10 @@ const SuggestionRow = (props: SuggestionRowProps) => (
 type PackageSearchProps = {
     /** The small form of the page header: submitted with Enter, and a bad name only marks the field. */
     compact?: boolean;
+    /** Picking a package does this instead of opening its page. */
+    onPick?: (spec: string) => void;
+    /** Not the page's main search: ⌘K belongs to the one in the header. */
+    secondary?: boolean;
 };
 
 /**
@@ -80,6 +84,7 @@ export const PackageSearch = (props: PackageSearchProps) => {
     }, [activeId]);
 
     useEffect(() => {
+        if (props.secondary === true) return undefined;
         const onKeyDown = (event: globalThis.KeyboardEvent) => {
             if (event.key.toLowerCase() !== 'k' || !(event.metaKey || event.ctrlKey) || event.altKey || event.shiftKey) return;
             event.preventDefault();
@@ -88,7 +93,7 @@ export const PackageSearch = (props: PackageSearchProps) => {
         };
         window.addEventListener('keydown', onKeyDown);
         return () => window.removeEventListener('keydown', onKeyDown);
-    }, []);
+    }, [props.secondary]);
 
     const lookUp = (spec: string) => {
         setInvalid(false);
@@ -96,7 +101,8 @@ export const PackageSearch = (props: PackageSearchProps) => {
         setActiveIndex(-1);
         setValue('');
         field.current?.blur();
-        void navigate({ to: '/package/$', params: { _splat: spec } });
+        if (props.onPick === undefined) void navigate({ to: '/package/$', params: { _splat: spec } });
+        else props.onPick(spec);
     };
 
     const onSubmit = (event: FormEvent) => {
@@ -158,7 +164,7 @@ export const PackageSearch = (props: PackageSearchProps) => {
                         onFocus={() => setOpen(true)}
                         onBlur={() => setOpen(false)}
                         onKeyDown={onKeyDown}
-                        placeholder={'Search npm, such as next or react@19.1.0'}
+                        placeholder={props.secondary === true ? 'Add a package' : 'Search npm, such as next or react@19.1.0'}
                         role={'combobox'}
                         aria-autocomplete={'list'}
                         aria-expanded={showList}
@@ -167,12 +173,12 @@ export const PackageSearch = (props: PackageSearchProps) => {
                         autoComplete={'off'}
                         autoCapitalize={'none'}
                         spellCheck={false}
-                        aria-keyshortcuts={'Meta+K Control+K'}
+                        aria-keyshortcuts={props.secondary === true ? undefined : 'Meta+K Control+K'}
                         aria-invalid={invalid}
                         aria-describedby={invalid ? errorId : undefined}
                         className={props.compact === true ? 'h-10! pr-14! pl-10! text-callout!' : 'pr-16!'}
                     />
-                    {hydrated && (
+                    {hydrated && props.secondary !== true && (
                         <kbd
                             aria-hidden={'true'}
                             className={'pointer-events-none absolute top-1/2 right-4 hidden -translate-y-1/2 font-sans text-caption text-subtle-foreground sm:block'}

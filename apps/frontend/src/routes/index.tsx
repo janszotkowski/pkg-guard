@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router';
+import { Link, createFileRoute } from '@tanstack/react-router';
 import { IsoPackage } from '@components/iso/IsoPackage';
 import { PackageSearch } from '@components/PackageSearch';
 
@@ -19,6 +19,12 @@ const HomePage = () => (
                 <h1 className={'text-display text-balance'}>What does this package really cost?</h1>
                 <p className={'max-w-xl text-headline font-normal text-muted-foreground'}>Minified, gzip and brotli sizes of any npm package, and what it puts on disk.</p>
                 <PackageSearch />
+                <Link
+                    to={'/trends'}
+                    className={'w-fit text-callout text-link underline-offset-2 hover:underline'}
+                >
+                    Or compare package trends
+                </Link>
             </div>
             <IsoPackage className={'mx-auto h-auto w-full max-w-xl'} />
         </div>

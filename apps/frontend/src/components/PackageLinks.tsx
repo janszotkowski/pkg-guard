@@ -1,4 +1,5 @@
 import type { PackageRef } from '@pkg-guard/core';
+import { Link } from '@tanstack/react-router';
 import { ArrowUpRight } from 'lucide-react';
 
 type OutLinkProps = { href: string; label: string };
@@ -30,6 +31,13 @@ type PackageLinksProps = {
 /** Where the package lives. npm always has it; GitHub only when the package says so. */
 export const PackageLinks = (props: PackageLinksProps) => (
     <div className={'flex items-center gap-4'}>
+        <Link
+            to={'/trends'}
+            search={{ packages: props.package.name }}
+            className={'inline-flex min-h-8 items-center text-callout text-link underline-offset-2 hover:underline'}
+        >
+            Compare trends
+        </Link>
         <OutLink
             href={npmUrl(props.package)}
             label={'npm'}

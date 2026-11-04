@@ -1,9 +1,23 @@
-import { ANALYZER_VERSION, analysisResponseSchema, errorResponseSchema, searchResponseSchema, type AnalysisResponse, type ErrorCode, type PackageSuggestion } from '@pkg-guard/core';
+import {
+    ANALYZER_VERSION,
+    analysisResponseSchema,
+    errorResponseSchema,
+    downloadsResponseSchema,
+    historyResponseSchema,
+    searchResponseSchema,
+    starsResponseSchema,
+    type AnalysisResponse,
+    type ErrorCode,
+    type HistoryResponse,
+    type PackageSuggestion,
+    type TrendRange,
+} from '@pkg-guard/core';
 import { keepPreviousData, queryOptions } from '@tanstack/react-query';
 import { API_URL } from '@config/api';
 
 const TIMEOUT_MS = 15_000;
 const POLL_MS = 1000;
+const HISTORY_POLL_MS = 2000;
 
 export class ApiError extends Error {
     readonly code: ErrorCode;
@@ -60,4 +74,50 @@ export const searchQuery = (query: string) =>
         staleTime: 5 * 60_000,
         retry: false,
         placeholderData: keepPreviousData,
+    });
+
+const readHistory = async (response: Response): Promise<HistoryResponse> => {
+    if (!response.ok) throw new Error(`The API answered ${response.status}`);
+    return historyResponseSchema.parse(await response.json());
+};
+
+/** A package's recent versions, asked for again while any of them is being measured. Reading this downloads nothing. */
+export const historyQuery = (name: string) =>
+    queryOptions({
+        queryKey: ['history', name],
+        queryFn: async ({ signal }) => readHistory(await fetch(`${API_URL}/v1/history?package=${encodeURIComponent(name)}`, { signal })),
+        staleTime: 30_000,
+        retry: false,
+        refetchInterval: (query) => (query.state.data?.versions.some((entry) => entry.status === 'queued' || entry.status === 'running') === true ? HISTORY_POLL_MS : false),
+    });
+
+/** Queues every version not yet measured. Each of them will be downloaded, in the worker's own container. */
+export const measureHistory = async (name: string): Promise<HistoryResponse> =>
+    readHistory(await fetch(`${API_URL}/v1/history?package=${encodeURIComponent(name)}`, { method: 'POST', signal: AbortSignal.timeout(TIMEOUT_MS) }));
+
+/** A package's downloads per day. npm updates them once a day, so they are kept for a while. */
+export const downloadsQuery = (name: string, range: TrendRange) =>
+    queryOptions({
+        queryKey: ['downloads', name, range],
+        queryFn: async ({ signal }) => {
+            const response = await fetch(`${API_URL}/v1/downloads?package=${encodeURIComponent(name)}&range=${range}`, { signal });
+            if (!response.ok) throw new Error(`The API answered ${response.status}`);
+            return downloadsResponseSchema.parse(await response.json());
+        },
+        staleTime: 30 * 60_000,
+        retry: false,
+    });
+
+/** A repository's stars, once its package has named one. */
+export const starsQuery = (repository: string | undefined) =>
+    queryOptions({
+        queryKey: ['stars', repository],
+        enabled: repository !== undefined,
+        queryFn: async ({ signal }) => {
+            const response = await fetch(`${API_URL}/v1/stars?repository=${encodeURIComponent(repository ?? '')}`, { signal });
+            if (!response.ok) throw new Error(`The API answered ${response.status}`);
+            return starsResponseSchema.parse(await response.json());
+        },
+        staleTime: 60 * 60_000,
+        retry: false,
     });

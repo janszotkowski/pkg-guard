@@ -115,6 +115,13 @@
     --link: #0c6e42;
     /* Bars of a chart: the same green, inside the lightness a mark should keep against its page (checked with the dataviz validator). */
     --bar: #0c6e42;
+    /* The top of the fade under a chart's line. The same color needs more of itself to show on a black page. */
+    --trend-fill: 32%;
+    /* Package colors of the trends chart: in this order they pass the dataviz validator in each theme. */
+    --series-1: #2a78d6;
+    --series-2: #eb6834;
+    --series-3: #1baf7a;
+    --series-4: #eda100;
 
     /* Glass: structure floating above content. */
     --glass-bg: rgb(255 255 255 / 60%);
@@ -158,6 +165,11 @@
     --ring: #3dd68c;
     --link: #3dd68c;
     --bar: #22a868;
+    --trend-fill: 62%;
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --series-3: #199e70;
+    --series-4: #c98500;
 
     --glass-bg: rgb(20 20 24 / 60%);
     --glass-border: rgb(255 255 255 / 14%);
@@ -544,5 +556,39 @@
     50% {
         translate: 0 -8px;
         opacity: 0.9;
+    }
+}
+
+/* TanStack Charts inherit the text color. Its tooltip box has its paint set inline, so the surface is on the card inside it. */
+.trend-chart {
+    color: var(--muted-foreground);
+
+    /* It appears and moves at once, and never gets in the pointer's way. */
+    .ts-chart-tooltip {
+        pointer-events: none;
+        transition: none;
+    }
+}
+
+/* The focused date, floating beside its line. */
+.trend-focus-card {
+    background: color-mix(in oklch, var(--popover) 88%, transparent);
+    backdrop-filter: blur(10px) saturate(150%);
+    -webkit-backdrop-filter: blur(10px) saturate(150%);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    box-shadow: 0 8px 28px rgb(0 0 0 / 18%);
+}
+
+/* While a chart loads, nothing under this can be clicked, and the page says why. A quick answer never gets to show it. */
+.trends-mask {
+    background: color-mix(in oklch, var(--background) 55%, transparent);
+    backdrop-filter: blur(3px);
+    animation: trends-mask-in 200ms var(--ease-standard) 80ms backwards;
+}
+
+@keyframes trends-mask-in {
+    from {
+        opacity: 0;
     }
 }
