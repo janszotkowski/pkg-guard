@@ -9,7 +9,7 @@ type SegmentedControlProps<Value extends string> = {
 };
 
 /** Which option a key moves to, by the ARIA radio group pattern; undefined for any other key. */
-const segmentStep = (key: string, index: number, count: number): number | undefined => {
+export const segmentStep = (key: string, index: number, count: number): number | undefined => {
     switch (key) {
         case 'ArrowRight':
         case 'ArrowDown':

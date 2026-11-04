@@ -1,5 +1,7 @@
 import { HeadContent, Outlet, Scripts, createRootRouteWithContext } from '@tanstack/react-router';
 import interLatin from '@fontsource-variable/inter/files/inter-latin-wght-normal.woff2?url';
+import { LoadingIndicator } from '@components/LoadingIndicator';
+import { RouteAnnouncer } from '@components/RouteAnnouncer';
 import { SiteFooter } from '@components/SiteFooter';
 import { SiteHeader } from '@components/SiteHeader';
 import { ALLOW_INDEXING, siteConfig } from '@config/site';
@@ -27,7 +29,9 @@ const RootDocument = () => (
             >
                 Skip to content
             </a>
+            <RouteAnnouncer />
             <SiteHeader />
+            <LoadingIndicator />
             <div className={'flex flex-1 flex-col'}>
                 <Outlet />
             </div>

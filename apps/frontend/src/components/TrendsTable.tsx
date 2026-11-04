@@ -43,7 +43,7 @@ const COLUMN_CLASS: Record<string, string> = {
 
 const orDash = (value: number | undefined, format: (value: number) => string): string => (value === undefined ? '—' : format(value));
 
-const SMALL_LINK = 'text-caption text-link underline-offset-2 hover:underline';
+const SMALL_LINK = 'inline-flex min-h-6 items-center text-caption text-link underline-offset-2 hover:underline';
 
 const buildColumns = (onRemove: (name: string) => void) =>
     helper.columns([
@@ -63,7 +63,7 @@ const buildColumns = (onRemove: (name: string) => void) =>
                             <Link
                                 to={'/package/$'}
                                 params={{ _splat: row.name }}
-                                className={'font-mono text-code font-semibold break-all text-link underline-offset-2 hover:underline'}
+                                className={'inline-flex min-h-6 items-center font-mono text-code font-semibold break-all text-link underline-offset-2 hover:underline'}
                             >
                                 {row.name}
                             </Link>

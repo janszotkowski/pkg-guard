@@ -134,6 +134,7 @@ export const PackageSearch = (props: PackageSearchProps) => {
     return (
         <form
             role={'search'}
+            aria-label={props.secondary === true ? 'Add a package' : 'Search npm packages'}
             onSubmit={onSubmit}
             className={'flex w-full flex-col gap-2'}
         >
