@@ -1,0 +1,13 @@
+{
+    "extends": "../../tsconfig.base.json",
+    "compilerOptions": {
+        "types": ["node"],
+        "paths": {
+            "@config/*": ["./src/config/*"],
+            "@platform/*": ["./src/platform/*"],
+            "@modules/*": ["./src/modules/*"],
+            "@composition/*": ["./src/composition/*"]
+        }
+    },
+    "include": ["src", "tests", "vitest.config.ts", "tsdown.config.ts"]
+}

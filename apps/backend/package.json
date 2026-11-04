@@ -1,0 +1,26 @@
+{
+    "name": "@pkg-guard/backend",
+    "version": "0.0.0",
+    "private": true,
+    "description": "Backend: HTTP API (Hono) over a SQLite store of measured packages, and the queue the worker takes jobs from",
+    "type": "module",
+    "scripts": {
+        "dev": "tsdown --watch --on-success \"node --env-file-if-exists=.env dist/main.api.mjs\"",
+        "build": "tsdown",
+        "start": "node --env-file-if-exists=.env dist/main.api.mjs",
+        "test": "vitest run",
+        "typecheck": "tsc -p tsconfig.json"
+    },
+    "dependencies": {
+        "@hono/node-server": "2.1.3",
+        "@pkg-guard/core": "workspace:*",
+        "hono": "4.13.12",
+        "pino": "10.4.0",
+        "zod": "4.6.7"
+    },
+    "devDependencies": {
+        "@types/node": "26.6.4",
+        "tsdown": "0.23.0",
+        "vitest": "5.0.3"
+    }
+}
