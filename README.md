@@ -1,60 +1,76 @@
 # pkg-guard
 
+![pkg-guard: What an npm package really costs your bundle](.github/banner.svg)
+
 **What an npm package really costs your bundle, free and open source.** Search for a package and see its minified, gzip and brotli sizes, what it puts on disk and which packages make up its bundle, measured with a modern bundler. The package's code is never run.
+
+**Not deployed yet:** for now it runs on your own machine. What is still required before a public release is in the [TODO](docs/TODO.md).
 
 [![CI](https://github.com/janszotkowski/pkg-guard/actions/workflows/ci.yml/badge.svg)](https://github.com/janszotkowski/pkg-guard/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-> Early work in progress. It runs locally only; see [How it's built](docs/ARCHITECTURE.md), including what is still required before a public deployment, and the [TODO](docs/TODO.md).
+pkg-guard measures a package the first time someone asks for it, and keeps the result. A worker in a locked-down Docker container installs the package without running any of its scripts and bundles it with Rolldown. It needs no paid API and no account, and has no analytics.
 
-[How it's built](docs/ARCHITECTURE.md) · [API](docs/API.md) · [MCP server](docs/MCP.md) · [Changelog](docs/CHANGELOG.md) · [Roadmap](docs/ROADMAP.md) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [License](LICENSE)
+[API reference](docs/API.md) · [MCP server](docs/MCP.md) · [Changelog](docs/CHANGELOG.md) · [Architecture](docs/ARCHITECTURE.md) · [Roadmap](docs/ROADMAP.md) · [Contributing](CONTRIBUTING.md) · [License](LICENSE)
 
-## Features
+## ✨ Features
 
-- **Measured, not guessed**: every package goes through a real bundler (rolldown), and the page says which one and which version. Minified, gzip and brotli sizes, and the time they take to download on 3G and 4G.
+- **Measured, not guessed**: every package goes through a real bundler (Rolldown), and the page says which one and which version. Minified, gzip and brotli sizes, and the time they take to download on slow 3G and 4G.
 - **What it puts on disk**: the install size and the number of packages it brings along, with peer dependencies named.
 - **Composition**: which packages make up the bundle, and what share each has.
-- **Exports**: the size of each export on its own, for packages that offer more than one.
-- **Package health**: licence, TypeScript types, ESM or CommonJS, last release, install scripts, Node built-ins and native add-ons it reaches for.
-- **Version history**: how the size changed from release to release, and any version measured on request.
-- **Trends**: up to several packages side by side, by size across releases or downloads over time, with GitHub stars.
+- **Exports**: the size of each named export and entry point on its own, for packages that offer more than one.
+- **Package health**: deprecation, license, TypeScript types, ESM or CommonJS, last release and install scripts, in what the registry says and with no judgement passed.
+- **Version history**: how the size changed from release to release, with any version measured on request.
+- **Trends**: up to 4 packages side by side, by size across releases or downloads over time, with GitHub stars.
+- **Shareable state**: the tab, the compared packages and the chart's settings live in the URL. Copy it, bookmark it, send it.
+- **Badges**: `/badge/<name>.svg` shows a package's gzip size in a README. Showing one never causes a download.
+- **A command line**: `pkg-guard react` prints what a package costs in the terminal, or the whole answer with `--json`.
 - **Its code never runs**: packages are installed without their scripts, in a Docker container with a read-only root, no capabilities, caps on memory, processors and processes, and a network that reaches only the npm registry; the bundler only reads them. What is downloaded stays on a Docker volume, never on the machine.
-- **Made to be found and cited**: server-rendered pages with structured data and a share image, `sitemap.xml`, `llms.txt`, and a Markdown version of every measured package for AI agents (`/package/<name>.md` or `Accept: text/markdown`).
-- **In your README, terminal and agent**: a badge with the gzip size (`/badge/<name>.svg`), a command line (`pkg-guard react`) and an [MCP server](docs/MCP.md) for AI assistants, and WebMCP tools for an agent in the browser.
-- **Accessible**: WCAG 2.2 AA, checked with axe-core in the browser tests; full keyboard use (`Ctrl`/`⌘ K` for the search), screen reader announcements, light and dark themes, reduced motion, and a table view of every chart's numbers.
+- **Made to be found and cited**: every measured package has its own server-rendered page with structured data and a share image; a sitemap, `llms.txt`, and a Markdown version of every measured package for AI agents (`/package/<name>.md` or `Accept: text/markdown`).
+- **An MCP server for AI assistants**: connect Claude, Cursor or any other client to `/v1/mcp` and let it check what a dependency costs before adding it, with no key. An agent in the browser finds the same on the site's pages, as WebMCP tools.
+- **How it's built**: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+- **Accessible**: WCAG 2.2 AA, checked with axe-core; full keyboard use (`Ctrl`/`⌘ K` for the search), screen reader announcements, light and dark themes, reduced motion, and a table view of every chart's numbers.
 
 ### How it works
 
 ```
- ┌──────────────────────┐   /v1/analyses    ┌─────────────────────────┐   /internal/jobs   ┌─────────────────────────────┐
- │ frontend             │ ────────────────▶ │ backend                 │ ◀───────────────── │ worker (Docker only)        │
- │ TanStack Start (SSR) │                   │ Hono + SQLite + a queue │                    │ pnpm install --ignore-scripts│
- └──────────────────────┘                   └─────────────────────────┘                    │ rolldown, gzip, brotli       │
-                                                                                           └───────────┬─────────────────┘
-                                                                                                       │ downloads from
-                                                                                                       ▼
-                                                                                                  registry.npmjs.org
+ ┌──────────────────────┐              ┌─────────────────────────┐                ┌───────────────────────────────┐
+ │ frontend             │ /v1/analyses │ backend                 │ /internal/jobs │ worker (Docker only)          │
+ │ TanStack Start (SSR) │─────────────▶│ Hono + SQLite + a queue │◀───────────────│ pnpm install --ignore-scripts │
+ └──────────────────────┘              └─────────────────────────┘                │ rolldown, gzip, brotli        │
+                                                                                  └───────────────┬───────────────┘
+                                                                                                  │ the only way out: a gateway
+                                                                                                  ▼
+                                                                                         registry.npmjs.org
 ```
 
 A package page asks the API for its analysis. The API answers from its store, or queues the package and answers "queued"; the worker, polling for work, downloads the package and its dependencies without running any of their scripts, bundles it, measures it and hands the result back. The page polls until the measurement is there. Only the worker ever touches a package; the API and the frontend never do.
+
+| Source                                         | What it adds                                                       | How it is read                                                   |
+| ---------------------------------------------- | ------------------------------------------------------------------ | ---------------------------------------------------------------- |
+| [npm registry](https://registry.npmjs.org)     | The packages themselves, versions, search, what a version declares | The worker installs a package; the API reads its documents       |
+| [npm's download counts](https://api.npmjs.org) | Downloads over time                                                | Asked for when a page needs them, and kept for a while           |
+| [GitHub](https://docs.github.com/en/rest)      | Stars of a package's repository                                    | Asked for when a page needs them, optionally with `GITHUB_TOKEN` |
 
 #### Security and performance
 
 - **Untrusted input, contained.** The worker runs only in Docker, with a read-only root filesystem, no Linux capabilities, no privilege gain and caps on memory, CPU and processes; it refuses to start anywhere else. Its only network has no route out of Docker but a gateway to `registry.npmjs.org`. Packages are installed with `--ignore-scripts` and never executed.
 - **Fair use.** Every caller gets 300 requests a minute to `/v1/*`; queueing downloads (`POST /v1/history`) has a far smaller share, so a crawler cannot fill the queue by opening pages. The frontend's rendering proves itself with a token and is limited per visitor instead. `RateLimit-*` headers say where you stand; a `429` carries `Retry-After`.
+- **Answers are reused.** A finished measurement stays in the store; pages and answers carry `s-maxage` and an `ETag` for a CDN. Documents for crawlers read with `known=1`, so following them never causes a download.
 - **Hardened pages.** A strict Content-Security-Policy that allows inline scripts only by hash and nonce, `frame-ancestors 'none'`, HSTS, `nosniff`, a strict referrer policy.
 - **Supply chain.** Exact dependency versions, each at least 7 days old before pnpm installs it; transitive dependencies from the registry only; install scripts allowed one by one; Docker base images pinned by digest; GitHub Actions pinned to a commit; pnpm installed through Corepack and verified by its hash. `pnpm policy` fails when any of it slips.
 
 #### Repository layout
 
 ```
-apps/backend     HTTP API (Hono on Node 24), SQLite store of measurements and the job queue
+apps/backend     HTTP API (Hono on Node 24) and MCP server, SQLite store of measurements and the job queue
 apps/worker      The analyzer, run only in Docker: installs, bundles and measures one package at a time
 apps/frontend    Web app (TanStack Start, Router, Query, Table, Charts; Tailwind; Nitro)
 apps/cli         Command line: asks the API what a package costs and prints it
 apps/e2e         Browser tests (Playwright) with an axe-core audit
-packages/core    Shared contract (zod/mini schemas and types), package spec parsing
+packages/core    Shared API contract (zod/mini), reading its answers, package spec parsing
 docker           The configuration of the worker's network gateway
+docs             API reference, MCP guide, changelog, architecture, roadmap
 tools            Policy check, smoke test, .env initializer, oxlint plugin
 ```
 
@@ -67,7 +83,7 @@ tools            Policy check, smoke test, .env initializer, oxlint plugin
 | Tailwind CSS 4, Base UI, Lucide                                   | Styling and accessible primitives                                        |
 | oxlint, oxfmt, Vitest, Playwright, axe-core                       | Lint, format, unit tests, browser tests, accessibility audit             |
 
-## Getting started
+## 🚀 Getting Started
 
 You need **Node 24.22.1** (see `.node-version`), **pnpm 12** (the exact version is pinned in `package.json` and fetched automatically) and **Docker**.
 
@@ -93,32 +109,48 @@ pnpm worker:stop    # stop it, keeping what it downloaded
 pnpm worker:clean   # stop it and delete everything it downloaded
 ```
 
-`pnpm stack` runs the whole product the way production would (API, frontend and worker as containers, from the [`Dockerfile`](Dockerfile)); it needs real `WORKER_TOKEN` and `INTERNAL_API_TOKEN` values in the environment and `BACKEND_URL=http://api:4100` for the worker.
+## 📖 Usage
 
-## Usage
-
-The API is JSON over HTTP and works from a browser, a script or any HTTP client. [The API reference](docs/API.md) has every field, and `/v1/openapi.json` describes it in OpenAPI 3.1 (the site shows the reference at `/api` and the MCP guide at `/mcp`):
+The API is JSON over HTTP and works directly from a browser, script, or other HTTP client. For example:
 
 ```bash
 curl "http://127.0.0.1:4100/v1/analyses?package=react"
 curl "http://127.0.0.1:4100/v1/analyses?package=react@19.1.0&known=1"
 ```
 
+**Full reference with examples: [`docs/API.md`](docs/API.md)**, which the site shows at `/api`. OpenAPI 3.1: `/v1/openapi.json`.
+
+Anyone may call it, within a fair-use limit (300 requests a minute per address by default; `RateLimit-*` headers tell you where you stand, and a `429` carries `Retry-After`). Answers carry `Cache-Control` headers suitable for a CDN; please cache on your side too.
+
 | Endpoint               | Returns                                                                                                                                                                       |
 | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `GET /v1/health`       | `{ status, version }`                                                                                                                                                         |
 | `GET /v1/analyses`     | The analysis of `package` (a name, optionally `@version` or `@tag`): queued, running, done or failed. `known=1` reads only what has been measured and never queues a download |
-| `GET /v1/history`      | Every version of `package`, with the sizes of the measured ones                                                                                                               |
-| `POST /v1/history`     | Queues every version of `package` to be measured (rate limited on its own, since each means a download)                                                                       |
+| `GET /v1/history`      | Recent versions of `package`, with the sizes of the measured ones                                                                                                             |
+| `POST /v1/history`     | Queues the versions of `package` not measured yet (rate limited on its own, since each means a download)                                                                      |
 | `GET /v1/downloads`    | Downloads of `package` per day over `range`                                                                                                                                   |
-| `GET /v1/metadata`     | What the registry says about `package@version`: licence, types, module format, scripts                                                                                        |
+| `GET /v1/metadata`     | What the registry says about `package@version`: deprecation, license, types, install scripts                                                                                  |
 | `GET /v1/stars`        | GitHub stars of `repository` (`owner/name`)                                                                                                                                   |
 | `GET /v1/search`       | Packages matching `q`                                                                                                                                                         |
 | `GET /v1/packages`     | Every measured package (what the sitemap lists)                                                                                                                               |
 | `GET /v1/openapi.json` | The OpenAPI 3.1 description of the API                                                                                                                                        |
-| `POST /v1/mcp`         | The [MCP server](docs/MCP.md), for AI assistants                                                                                                                              |
 
 Errors share one shape, `{ error: { code, message, requestId } }`, with codes `VALIDATION_FAILED`, `NOT_FOUND`, `RATE_LIMITED`, `UNAUTHORIZED`, `UNAVAILABLE` and `INTERNAL`. The response shapes are defined once, as zod schemas, in [`packages/core/src/contract`](packages/core/src/contract).
+
+### MCP server
+
+An AI assistant can use the same data over the [Model Context Protocol](https://modelcontextprotocol.io). The server is free and needs no key. Each request counts against the API's rate limit.
+
+```bash
+claude mcp add --transport http pkg-guard http://127.0.0.1:4100/v1/mcp
+```
+
+| Tool                   | Answers                                                                                                    |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `get_package_cost`     | Sizes, install size, composition and exports. A package not measured yet is queued, and the answer says so |
+| `get_package_metadata` | What the registry says of a version: deprecation, license, types and install scripts                       |
+
+**Other clients and details: [`docs/MCP.md`](docs/MCP.md)**, which the site shows at `/mcp`.
 
 ### Badge
 
@@ -132,9 +164,9 @@ node apps/cli/dist/main.cli.mjs react
 node apps/cli/dist/main.cli.mjs react@19.1.0 --json
 ```
 
-It asks the API, and waits while a package is being measured. Until the site is deployed, it asks the local one; `--api <url>` or `PKG_GUARD_API_URL` name another. The exit code is 0 with a result, 1 without one and 2 for a command line that makes no sense.
+It asks the API, and waits while a package is being measured. Until the site is deployed, it asks the local one; `--api <url>` or `PKG_GUARD_API_URL` name another. The exit code is 0 with a result, 1 without one and 2 for a command line that makes no sense. It is not on npm yet.
 
-## Configuration
+## ⚙️ Configuration
 
 The backend reads its settings from the environment once at start-up and refuses to start with a readable message when one is invalid. The full list, with defaults, is in [`apps/backend/src/config/env.ts`](apps/backend/src/config/env.ts).
 
@@ -167,15 +199,35 @@ The frontend's settings are build-time (`VITE_*`, baked into the bundle) plus a 
 | `INTERNAL_API_TOKEN`  | Runtime, server only: the same token as the backend's                          |
 | `CLIENT_IP_HEADER`    | Runtime, server only: the header with the visitor's address behind a proxy     |
 
-## Documentation
+## 🚢 Deployment
 
-- [How it's built](docs/ARCHITECTURE.md) describes one analysis end to end, how packages are handled safely, the rate limit, the documents for search engines and agents, the security headers and accessibility.
-- [API reference](docs/API.md) has every endpoint and field; the [MCP guide](docs/MCP.md) connects an AI assistant. The [changelog](docs/CHANGELOG.md) lists what changed. The site shows all three, at `/api`, `/mcp` and `/changelog`.
+pkg-guard has not been deployed yet, so this is what the repository provides rather than a tried guide. The whole product is the API, the frontend, the worker and its network gateway as containers, with the measurements in one SQLite file on a volume.
+
+```bash
+SITE_URL=https://pkg.example.org \
+API_URL=https://api.pkg.example.org \
+ALLOW_INDEXING=true \
+WORKER_TOKEN=a-random-string-of-32-characters-or-more \
+INTERNAL_API_TOKEN=another-random-string-of-32-characters-or-more \
+BACKEND_URL=http://api:4100 \
+docker compose --profile app up -d --build
+```
+
+[`docker-compose.yml`](docker-compose.yml) builds the images from the [`Dockerfile`](Dockerfile). The API refuses the example tokens in production. Compose caps the worker at 3 GB of memory and 2 processors, the API at 1 GB and the frontend at 512 MB. It publishes the API and the frontend on `127.0.0.1` only, so put a reverse proxy or a tunnel in front for TLS, and set `CLIENT_IP_HEADER` to the header it overwrites with the visitor's address (both services read it). `pnpm stack` runs the same locally in the foreground, and `pnpm stack:down` stops it.
+
+Serverless platforms without Docker and a persistent disk do not fit: the database, the queue and the worker need long-lived processes.
+
+## 📚 Documentation
+
+- [API reference](docs/API.md) explains every public endpoint and field with examples.
+- [MCP server](docs/MCP.md) shows how to connect an AI assistant, and lists its tools.
+- [Changelog](docs/CHANGELOG.md) lists what changed on the site and in the API.
+- [Architecture](docs/ARCHITECTURE.md) describes one analysis end to end, how packages are handled safely, the rate limit, the threat model, the documents for search engines and agents, the security headers and accessibility.
 - [Roadmap](docs/ROADMAP.md) lists the features that come next; the [TODO](docs/TODO.md) what must be done before the first public release.
 - [Security policy](SECURITY.md) explains how to report a vulnerability in pkg-guard.
-- [AGENTS.md](AGENTS.md) spells out the conventions for coding agents (and people).
+- [AGENTS.md](AGENTS.md) spells out the code style, dependency and architecture rules, for coding agents and people.
 
-## Development
+## 🛠️ Development
 
 Use the commands below while developing or validating a change:
 
@@ -189,54 +241,31 @@ Use the commands below while developing or validating a change:
 | `pnpm typecheck` | TypeScript across the monorepo                                                                                                                                                               |
 | `pnpm lint`      | oxlint, warnings fail                                                                                                                                                                        |
 | `pnpm format`    | oxfmt (use `pnpm format:check` to only check)                                                                                                                                                |
-| `pnpm policy`    | The dependency, toolchain, Docker and workflow rules below                                                                                                                                   |
+| `pnpm policy`    | The dependency, toolchain, Docker, network and workflow rules (`tools/check-policy.js`)                                                                                                      |
 | `pnpm verify`    | Everything CI runs before the browser tests: policy, lint, format check, typecheck, tests, build, smoke test                                                                                 |
 | `pnpm stack`     | The whole product in Docker (`--profile app`); `pnpm stack:down` stops it                                                                                                                    |
 
-### Checks and CI
+## 🤝 Contributing
 
-`pnpm verify` runs everything CI runs, in the same order: the dependency and workflow policy (`pnpm policy`), lint, formatting, types, tests, the build and the smoke test. If it passes locally it passes in CI. CI (`.github/workflows/ci.yml`) then runs the browser tests, checks that the build changed no committed file (the generated route tree) and builds the three Docker images. Merging should require the **Verify** check to be green.
+Contributions are welcome: bug reports, wrong measurements, new measurements, new views. Please read [CONTRIBUTING.md](CONTRIBUTING.md) first; everyone taking part follows the [Code of Conduct](CODE_OF_CONDUCT.md). To report a security problem in pkg-guard itself, see [SECURITY.md](SECURITY.md).
 
-### Dependency rules
+## 🐛 Issues & Support
 
-- pnpm, workspaces and Turborepo only.
-- Every version in `package.json` is exact (no `^` or `~`); `savePrefix: ""` in `pnpm-workspace.yaml`.
-- `minimumReleaseAge: 10080`: only versions older than 7 days are installed.
-- `blockExoticSubdeps: true`: transitive dependencies come from the registry, never from a git repository or a tarball URL. `strictDepBuilds: true`: an install script that is not listed in `allowBuilds` fails the install instead of being skipped.
-- `pnpm policy` (`tools/check-policy.js`) fails on a range in any `package.json` or in `overrides`, an unpinned package manager or runtime, a weakened `pnpm-workspace.yaml`, a Docker base image or Compose image that is not pinned by digest, a Dockerfile whose Node or pnpm differ from the project's, or a GitHub Action that is not pinned to a full SHA.
+Open an issue for a [bug](https://github.com/janszotkowski/pkg-guard/issues/new?template=bug_report.yml), a [wrong measurement](https://github.com/janszotkowski/pkg-guard/issues/new?template=wrong_measurement.yml), or a [feature request](https://github.com/janszotkowski/pkg-guard/issues/new?template=feature_request.yml). For a security issue in pkg-guard itself, follow the private reporting process in [SECURITY.md](SECURITY.md); never open a public issue for it. A vulnerability in a package that pkg-guard measured is not a pkg-guard issue: report it to that package's maintainers.
 
-### Lint and format
+## 📋 Code of Conduct
 
-One configuration for the whole monorepo in the root: `oxlint.config.ts` and `oxfmt.config.ts` (oxlint + oxfmt, no ESLint, Prettier or Biome). React and a11y rules apply to `apps/frontend` only.
+Everyone taking part in the project is expected to follow the [Code of Conduct](CODE_OF_CONDUCT.md).
 
-#### Code style rules enforced by lint
+## 📄 License
 
-- **Functions are `const`**, never declarations: `export const parseSpec = (value: string) => { … }`, not `export function parseSpec(value: string) { … }` (`eslint/func-style: expression`). Generators are the one shape an arrow cannot take, so they are written as function expressions: `const chunks = async function* (…) { … }`.
-- **React components take one `props` parameter and read `props.x`**, never a destructured parameter list: `const ErrorState = (props: ErrorStateProps) => …`, not `({ error, reset }: ErrorStateProps) => …`. A component that forwards the rest to a primitive splits it off inside the body (`const { className, ...rest } = props`). Enforced by the project rules `pkgguard/no-destructured-component-props` and `pkgguard/no-inline-component-props-type` (`tools/oxlint-plugin.js`, an oxlint JS plugin).
-- **Imports use path aliases, never `../`** and never `./folder/…`: `import { AppError } from '@platform/errors.ts'`. Only a sibling in the same folder (`./name`) may be relative. Every top-level folder of a package is an alias of the same name, plus `@src` and `@tests`:
+pkg-guard measures packages as published on npm and shows public data as its sources give it, without warranty of any kind.
 
-    | Package         | Aliases (tsconfig `paths`)                                                         |
-    | --------------- | ---------------------------------------------------------------------------------- |
-    | `apps/backend`  | `@config` `@platform` `@modules` `@composition` `@src` `@tests`                    |
-    | `apps/worker`   | `@config` `@modules` `@src` `@tests`                                               |
-    | `apps/frontend` | `@components` `@config` `@docs` `@lib` `@routes` `@styles` `@src` `@tests` `@vite` |
-    | `apps/cli`      | `@src` `@tests`                                                                    |
-    | `packages/core` | `@src` `@tests`, for tests only                                                    |
+- Packages, versions and what a version declares come from the [npm registry](https://registry.npmjs.org), and download counts from [npm's statistics](https://api.npmjs.org).
+- Stars come from [GitHub](https://github.com).
 
-    Vite, Vitest and tsdown resolve them from `tsconfig.json`; `tsc` too. Exceptions (the lint rule is off there): the config-time files (`vite.config.ts`, `vitest.config.ts`, `tsdown.config.ts`, `apps/frontend/vite/**`), which run before aliases exist, and `packages/core/src`, which other packages consume as source and which therefore cannot rely on its own aliases (it keeps relative imports).
+[MIT](LICENSE) © Jan Szotkowski. A package's own license stays its own.
 
-- A `const` function is not hoisted: define it above the code that uses it at module load (for example a route component above `createFileRoute(...)`). TypeScript reports a violation as "used before its declaration".
-- No `console` (use the logger), no `any`, `type` instead of `interface`, no unused variables or empty functions.
-- `packages/core` reaches the browser: no `window`, `document`, `process` or `Buffer` there, and `zod/mini` instead of `zod`.
+## 👥 Authors & Contributors
 
-## Contributing
-
-Contributions are welcome: bug reports, wrong measurements, new measurements, new views. Please read [CONTRIBUTING.md](CONTRIBUTING.md) first; everyone taking part follows the [Code of Conduct](CODE_OF_CONDUCT.md). Open an issue for a [bug](https://github.com/janszotkowski/pkg-guard/issues/new?template=bug_report.yml), a [wrong measurement](https://github.com/janszotkowski/pkg-guard/issues/new?template=wrong_measurement.yml) or a [feature request](https://github.com/janszotkowski/pkg-guard/issues/new?template=feature_request.yml).
-
-## Security
-
-To report a security problem in pkg-guard itself, follow the private reporting process in [SECURITY.md](SECURITY.md); never open a public issue for it. A vulnerability in a package that pkg-guard measured is not a pkg-guard issue: report it to that package's maintainers.
-
-## License
-
-[MIT](LICENSE) © Jan Szotkowski. pkg-guard measures packages as published on npm, without warranty of any kind; a package's own licence stays its own.
+Created and maintained by [Jan Szotkowski](https://github.com/janszotkowski). See the [contributor graph](https://github.com/janszotkowski/pkg-guard/graphs/contributors) for everyone who has helped improve pkg-guard.
