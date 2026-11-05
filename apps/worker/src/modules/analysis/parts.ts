@@ -1,8 +1,7 @@
-import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { ExportDetails } from '@pkg-guard/core';
-import { bundle, compressPart } from './bundle.ts';
-import { importableNames, namedEntry, subpathsOf, type Manifest } from './entry.ts';
+import { bundleEntry, compressPart } from './bundle.ts';
+import { importableNames, namedEntry, subpathsOf, type Entry, type Manifest } from './entry.ts';
 
 /** A package can export thousands of names, and one bundle per name is the slow part: enough for any list a person reads. */
 const MAX_NAMED = 500;
@@ -22,7 +21,7 @@ export type PartsOptions = {
     deadline: number;
 };
 
-type Part<T> = { code: string; label: T };
+type Part<T> = { entry: Pick<Entry, 'code' | 'fallback'>; label: T };
 
 /** Measures parts until they run out or time does. One that cannot be bundled alone is counted and does not stop the rest. */
 const measureAll = async <T>(parts: readonly Part<T>[], options: PartsOptions, prefix: string) => {
@@ -33,8 +32,7 @@ const measureAll = async <T>(parts: readonly Part<T>[], options: PartsOptions, p
             parts.slice(start, start + BATCH).map(async (part, offset) => {
                 const file = join(options.dir, `pkg-guard-${prefix}-${start + offset}.mjs`);
                 try {
-                    await writeFile(file, part.code);
-                    const { files } = await bundle(file, options.dir, options.peers);
+                    const { files } = await bundleEntry(part.entry, file, options.dir, options.peers);
                     measured.push({ label: part.label, ...(await compressPart(files)) });
                 } catch {
                     failed++;
@@ -49,7 +47,7 @@ const measureAll = async <T>(parts: readonly Part<T>[], options: PartsOptions, p
 export const measureParts = async (options: PartsOptions): Promise<ExportDetails> => {
     const found = subpathsOf(options.packageName, options.manifest);
     const subpaths = await measureAll(
-        found.subpaths.slice(0, MAX_SUBPATHS).map((subpath) => ({ code: subpath.entry.code, label: subpath.path })),
+        found.subpaths.slice(0, MAX_SUBPATHS).map((subpath) => ({ entry: subpath.entry, label: subpath.path })),
         options,
         'subpath',
     );
@@ -57,7 +55,7 @@ export const measureParts = async (options: PartsOptions): Promise<ExportDetails
     // A bundler cannot drop parts of CommonJS reliably, so a number per name would suggest a saving that is not there.
     const names = options.esm ? importableNames(options.exportNames) : [];
     const named = await measureAll(
-        names.slice(0, MAX_NAMED).map((name) => ({ code: namedEntry(options.packageName, name), label: name })),
+        names.slice(0, MAX_NAMED).map((name) => ({ entry: { code: namedEntry(options.packageName, name) }, label: name })),
         options,
         'named',
     );

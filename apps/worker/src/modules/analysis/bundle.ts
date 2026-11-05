@@ -1,4 +1,5 @@
 import { existsSync } from 'node:fs';
+import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { gzip as gzipCallback, brotliCompress as brotliCallback, constants } from 'node:zlib';
 import { promisify } from 'node:util';
@@ -6,7 +7,8 @@ import type { AnalysisResult } from '@pkg-guard/core';
 import { rolldown, VERSION } from 'rolldown';
 import { compositionOf } from './composition.ts';
 import { createExternal, isFatalUnresolved, type NodeUse } from './external.ts';
-import { AnalysisError, NoEntryError } from './failure.ts';
+import type { Entry } from './entry.ts';
+import { AnalysisError, EmptyEntryError, NoEntryError } from './failure.ts';
 
 const gzip = promisify(gzipCallback);
 const brotli = promisify(brotliCallback);
@@ -52,8 +54,20 @@ export const bundle = async (entry: string, cwd: string, peers: readonly string[
         throw new AnalysisError('BUNDLE_FAILED', error instanceof Error ? error.message : String(error));
     }
     if (fatal.length > 0) throw new NoEntryError(fatal.join('\n'));
-    if (!modules.some(([id]) => id.includes('node_modules'))) throw new AnalysisError('BUNDLE_FAILED', 'The bundle contains nothing of the package');
+    if (!modules.some(([id]) => id.includes('node_modules'))) throw new EmptyEntryError('The bundle contains nothing of the package');
     return { files, exports, environment: { nodeBuiltins: [...use.builtins].sort(), nativeAddons: use.nativeAddons.size, unresolvedImports }, composition: compositionOf(modules) };
+};
+
+/** Writes the entry and bundles it. An entry naming a default export the module does not have fails, so it is then bundled without. */
+export const bundleEntry = async (entry: Pick<Entry, 'code' | 'fallback'>, file: string, cwd: string, peers: readonly string[]): Promise<Bundle> => {
+    await writeFile(file, entry.code);
+    try {
+        return await bundle(file, cwd, peers);
+    } catch (error) {
+        if (entry.fallback === undefined || !(error instanceof AnalysisError) || !error.message.includes('MISSING_EXPORT')) throw error;
+    }
+    await writeFile(file, entry.fallback);
+    return bundle(file, cwd, peers);
 };
 
 const total = (buffers: readonly Buffer[]): number => buffers.reduce((sum, buffer) => sum + buffer.length, 0);

@@ -1,9 +1,9 @@
-import { readFile, realpath, writeFile } from 'node:fs/promises';
+import { readFile, realpath } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { AnalysisResult, ExportDetails, PackageRef } from '@pkg-guard/core';
-import { BUNDLER, bundle, compress, type Bundle } from './bundle.ts';
+import { BUNDLER, bundleEntry, compress, type Bundle } from './bundle.ts';
 import { commandsOf, descriptionOf, entrySource, peerNames, type Manifest } from './entry.ts';
-import { AnalysisError, NoEntryError } from './failure.ts';
+import { AnalysisError, EmptyEntryError, NoEntryError } from './failure.ts';
 import { installPackage, measureInstall } from './install.ts';
 import { measureParts } from './parts.ts';
 import { githubUrl } from './repository.ts';
@@ -34,14 +34,16 @@ export const analyze = async (ref: PackageRef, options: AnalyzeOptions): Promise
     const entry = entrySource(ref.name, manifest);
     const peerDependencies = peerNames(manifest);
     const entryFile = join(dir, 'pkg-guard-entry.mjs');
-    await writeFile(entryFile, entry.code);
 
     const bundleStarted = performance.now();
     let whole: Bundle | undefined;
     try {
-        whole = await bundle(entryFile, dir, peerDependencies);
+        whole = await bundleEntry(entry, entryFile, dir, peerDependencies);
     } catch (error) {
-        if (!(error instanceof NoEntryError)) throw error;
+        // An ES module that exports nothing from its root is an answer: some packages are used only through their subpaths.
+        // CommonJS is kept alive whole, so nothing of it in the bundle is something gone wrong.
+        const nothingToImport = error instanceof NoEntryError || (error instanceof EmptyEntryError && entry.kind === 'export-star');
+        if (!nothingToImport) throw error;
     }
     const bundleMs = elapsed(bundleStarted);
 

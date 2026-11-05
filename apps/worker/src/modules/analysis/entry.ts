@@ -1,7 +1,8 @@
 /** The parts of a package's `package.json` the analysis reads. */
 export type Manifest = { type?: unknown; module?: unknown; exports?: unknown; peerDependencies?: unknown; sideEffects?: unknown; repository?: unknown; description?: unknown; bin?: unknown };
 
-export type Entry = { kind: 'export-star' | 'namespace'; code: string };
+/** `fallback` is the same entry without a default export, for a module that has none: importing one that is missing fails the build. */
+export type Entry = { kind: 'export-star' | 'namespace'; code: string; fallback?: string };
 
 const hasImportCondition = (value: unknown): boolean => {
     if (Array.isArray(value)) return value.some(hasImportCondition);
@@ -14,10 +15,15 @@ export const isEsm = (manifest: Manifest): boolean => manifest.type === 'module'
 /**
  * `export *` keeps an ES module's tree-shaking but measures next to nothing over CommonJS, whose exports a bundler cannot
  * see. A namespace kept alive measures CommonJS correctly and ES modules too large, because it has to build the namespace object.
+ * `export *` leaves out a default export, so it is named as well: without it, a package with only a default (`vue@2`) would
+ * measure nothing, and one with both would quietly measure too little.
  */
 const entryFor = (specifier: string, esm: boolean): Entry => {
     const quoted = JSON.stringify(specifier);
-    return esm ? { kind: 'export-star', code: `export * from ${quoted};\n` } : { kind: 'namespace', code: `import * as all from ${quoted};\nglobalThis.__pkgGuard = all;\n` };
+    const star = `export * from ${quoted};\n`;
+    return esm
+        ? { kind: 'export-star', code: `${star}export { default } from ${quoted};\n`, fallback: star }
+        : { kind: 'namespace', code: `import * as all from ${quoted};\nglobalThis.__pkgGuard = all;\n` };
 };
 
 /** The module the bundler starts from to measure a whole package. */

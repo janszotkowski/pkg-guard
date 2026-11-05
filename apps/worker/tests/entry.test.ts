@@ -18,7 +18,7 @@ describe('isEsm', () => {
 
 describe('entrySource', () => {
     it('keeps tree-shaking for ES modules', () => {
-        expect(entrySource('x', { type: 'module' })).toEqual({ kind: 'export-star', code: 'export * from "x";\n' });
+        expect(entrySource('x', { type: 'module' })).toEqual({ kind: 'export-star', code: 'export * from "x";\nexport { default } from "x";\n', fallback: 'export * from "x";\n' });
     });
 
     it('keeps the namespace of CommonJS alive', () => {
@@ -71,7 +71,7 @@ describe('subpathsOf', () => {
             ['./client', 'export-star'],
             ['./legacy', 'namespace'],
         ]);
-        expect(subpaths[0]?.entry.code).toBe('export * from "x/client";\n');
+        expect(subpaths[0]?.entry.code).toBe('export * from "x/client";\nexport { default } from "x/client";\n');
     });
 
     it('finds nothing in a package without a map of paths', () => {

@@ -6,6 +6,11 @@ API releases carry the version of the `/v1` contract; how it is versioned is at 
 
 ## 2026-11-05
 
+### Measuring
+
+- ES modules are measured with their default export, which `export *` leaves out. A package with only a default, such as `vue@2` or `zustand@3`, failed before; one with both was quietly measured too small. Every package is measured again the next time someone asks for it.
+- A package whose root exports nothing and which is used through its subpaths, such as `@tanstack/devtools-event-bus@0.3.2`, now has nothing to import instead of failing, and its subpaths are measured.
+
 ### API 1.0.0
 
 - `GET /v1/openapi.json`: an OpenAPI 3.1 description of the whole API, generated from the schemas the answers are checked against. Generate a client in any language from it.

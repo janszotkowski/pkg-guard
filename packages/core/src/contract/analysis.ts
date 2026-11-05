@@ -4,14 +4,14 @@ import * as z from 'zod/mini';
  * Which way of measuring a stored result came from. Bump it when the bundler or its settings change: results of the old
  * value are no longer served, and each package is measured again the next time someone asks for it.
  */
-export const ANALYZER_VERSION = 7;
+export const ANALYZER_VERSION = 8;
 
 export const packageRefSchema = z.object({ name: z.string(), version: z.string() });
 
 export type PackageRef = z.infer<typeof packageRefSchema>;
 
 /**
- * How the package is imported for measuring. ESM takes `export *`, which keeps its tree-shaking. CommonJS takes the
+ * How the package is imported for measuring. ESM takes `export *` and its default export, which keeps its tree-shaking. CommonJS takes the
  * namespace: bundlers cannot see the exports of `export *` over CommonJS and would measure an empty module.
  */
 export const ENTRY_KINDS = ['export-star', 'namespace'] as const;

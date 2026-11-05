@@ -86,9 +86,9 @@ Keyboard reachable with a skip link and visible focus, labelled controls, tables
 
 ## Measuring
 
-- **The entry depends on the package**: ES modules are measured through `export *`, CommonJS through a namespace import. `export *` over CommonJS measures next to nothing.
+- **The entry depends on the package**: ES modules are measured through `export *` and their default export, which `export *` leaves out, CommonJS through a namespace import. `export *` over CommonJS measures next to nothing.
 - **Nothing to import is an answer**: a package whose entry cannot be resolved, such as a command-line tool, gets its install size and its commands, and no bundle size.
-- **A suspicious result is a failure**: a bundle with nothing of the package in it fails the analysis instead of reporting a few bytes.
+- **A suspicious result is a failure**: a CommonJS bundle with nothing of the package in it fails the analysis instead of reporting a few bytes. An ES module whose root exports nothing has nothing to import, and its subpaths are still measured.
 - **A package made for Node.js says so**: Node's own modules and native addons stay out of the bundle and are named on the page, and imports that fail deep in the dependencies, often optional ones, are counted there. The number is then not a browser size, and the page says that too.
 - **Peer dependencies are not counted**: the app brings them anyway.
 - **Composition is an estimate**: the bundler reports each module's size before minifying, so the page shows each package's share of the bundle and works out its minified size from that.

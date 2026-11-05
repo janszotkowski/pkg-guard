@@ -34,3 +34,11 @@ export const toFailure = (error: unknown, localPaths: readonly string[]): Analys
     message = message.trim().slice(0, MAX_MESSAGE);
     return { code: error instanceof AnalysisError ? error.code : 'INTERNAL', message: message === '' ? 'The analysis failed' : message };
 };
+
+/** The bundle holds nothing of the package: for an ES module, an entry that exports nothing; for CommonJS, something gone wrong. */
+export class EmptyEntryError extends AnalysisError {
+    constructor(message: string) {
+        super('BUNDLE_FAILED', message);
+        this.name = 'EmptyEntryError';
+    }
+}
