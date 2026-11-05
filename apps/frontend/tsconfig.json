@@ -11,7 +11,11 @@
             "@components/*": ["./src/components/*"],
             "@config/*": ["./src/config/*"],
             "@lib/*": ["./src/lib/*"],
-            "@styles/*": ["./src/styles/*"]
+            "@routes/*": ["./src/routes/*"],
+            "@styles/*": ["./src/styles/*"],
+            "@src/*": ["./src/*"],
+            "@tests/*": ["./tests/*"],
+            "@vite/*": ["./vite/*"]
         }
     },
     "include": ["src", "tests", "vite", "vite.config.ts", "vitest.config.ts"]

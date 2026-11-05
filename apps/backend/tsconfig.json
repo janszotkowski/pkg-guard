@@ -6,7 +6,9 @@
             "@config/*": ["./src/config/*"],
             "@platform/*": ["./src/platform/*"],
             "@modules/*": ["./src/modules/*"],
-            "@composition/*": ["./src/composition/*"]
+            "@composition/*": ["./src/composition/*"],
+            "@src/*": ["./src/*"],
+            "@tests/*": ["./tests/*"]
         }
     },
     "include": ["src", "tests", "vitest.config.ts", "tsdown.config.ts"]

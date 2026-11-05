@@ -2,6 +2,10 @@
     "extends": "../../tsconfig.base.json",
     "include": ["src", "tests", "vitest.config.ts"],
     "compilerOptions": {
+        "paths": {
+            "@src/*": ["./src/*"],
+            "@tests/*": ["./tests/*"]
+        },
         "lib": ["ES2023", "DOM"]
     }
 }

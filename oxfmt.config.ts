@@ -9,5 +9,5 @@ export default defineConfig({
     bracketSameLine: false,
     tabWidth: 4,
     singleAttributePerLine: true,
-    ignorePatterns: ['dist', 'build', '.output', 'node_modules', '.tanstack', '.turbo', '**/routeTree.gen.ts', 'docs', '.claude', 'pnpm-lock.yaml'],
+    ignorePatterns: ['dist', 'build', '.output', 'node_modules', '.tanstack', '.turbo', '**/routeTree.gen.ts', 'docs', '.claude', 'pnpm-lock.yaml', 'AGENTS.md'],
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isValidPackageName, parseSpec } from '../src/contract/package-spec.ts';
+import { isValidPackageName, parseSpec } from '@src/contract/package-spec.ts';
 
 describe('parseSpec', () => {
     it.each([

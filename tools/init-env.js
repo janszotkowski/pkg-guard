@@ -4,8 +4,9 @@
  */
 import { copyFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const root = new URL('..', import.meta.url).pathname;
+const root = fileURLToPath(new URL('..', import.meta.url));
 const targets = ['apps/backend', 'apps/frontend'];
 
 for (const target of targets) {
