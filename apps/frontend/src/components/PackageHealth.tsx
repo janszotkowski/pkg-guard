@@ -1,7 +1,9 @@
 import type { AnalysisResult, HistoryResponse, PackageMetadata, PackageRef } from '@pkg-guard/core';
 import { useQuery } from '@tanstack/react-query';
+import { CopyButton } from '@components/CopyButton';
 import { Notice } from '@components/Notice';
 import { historyQuery, metadataQuery } from '@lib/api';
+import { badgeMarkdown } from '@lib/documents/badge';
 import { dayLabel } from '@lib/trends';
 
 type Fact = { label: string; value: string; hint: string };
@@ -90,6 +92,12 @@ export const PackageHealth = (props: PackageHealthProps) => {
                     </div>
                 ))}
             </dl>
+            <CopyButton
+                className={'self-start'}
+                variant={'outline'}
+                label={'Copy README badge'}
+                getText={() => badgeMarkdown(props.package.name)}
+            />
         </section>
     );
 };

@@ -7,6 +7,7 @@ import { ALLOW_INDEXING, canonicalUrl } from '@config/site';
 import { fetchKnownAnalysis, fetchMeasuredPackages } from '@lib/api';
 import { clientIpHeader, requestIp } from '@lib/clientIp';
 import { compressed } from '@lib/compression';
+import { packageBadge, type Badge } from '@lib/documents/badge';
 import { aiCatalog } from '@lib/documents/discovery';
 import { llmsTxt } from '@lib/documents/llms';
 import { markdownTokens, notMeasuredMarkdown, packageMarkdown, packagePathSpec, wantsMarkdown } from '@lib/documents/markdown';
@@ -95,6 +96,9 @@ const measuredPackages = (): Promise<PackagesResponse['packages']> => measured.g
 /** A file past the last one is not an empty sitemap: it does not exist, and will not for a while. */
 const NO_SITEMAP_CACHE = 'public, max-age=300';
 
+/** A badge is fetched each time a README is read, mostly through one proxy: what it says is asked of the API at most every few minutes. */
+const badges = ttlCache<Badge>({ ttlMs: 5 * 60_000, max: 1000 });
+
 const png = (bytes: Uint8Array<ArrayBuffer>, cache: string): Response => new Response(bytes, { headers: { 'content-type': 'image/png', 'cache-control': cache } });
 
 const siteCard = (cache: string): Response => new Response(null, { status: 302, headers: { location: canonicalUrl('/og/default.png'), 'cache-control': cache } });
@@ -112,6 +116,7 @@ const DOCUMENTS: Readonly<Record<string, () => Response | Promise<Response>>> = 
 };
 
 const OG_PACKAGE = /^\/og\/package\/(.+)\.png$/;
+const BADGE = /^\/badge\/(.+)\.svg$/;
 
 /** One file of the package sitemap, by its number in the address. */
 const packageSitemapResponse = async (page: number): Promise<Response> => {
@@ -144,6 +149,18 @@ const packageOgImage = async (spec: string): Promise<Response> => {
     }
 };
 
+/** A package's README badge, from what has been measured, so showing one never causes a download. A broken API still draws a badge, not a broken image. */
+const packageBadgeResponse = async (spec: string): Promise<Response> => {
+    if (parseSpec(spec) === undefined) return notFound();
+    const badge = await badges
+        .get(spec, async () => packageBadge(await fetchKnownAnalysis(spec)))
+        .catch((error: unknown) => {
+            console.error('badge failed', error);
+            return packageBadge(undefined, true);
+        });
+    return text(badge.svg, 'image/svg+xml; charset=utf-8', badge.cache);
+};
+
 /** A package as Markdown: its `.md` twin, or its page asked for with `Accept: text/markdown`. Only what has been measured. */
 const packageMarkdownResponse = async (spec: string, twin: boolean): Promise<Response> => {
     const markdown = (body: string, status: number, extra: Record<string, string> = {}) =>
@@ -165,6 +182,8 @@ const documentResponse = (request: Request, pathname: string): Promise<Response>
     if (sitemapPage !== undefined) return packageSitemapResponse(sitemapPage);
     const og = OG_PACKAGE.exec(pathname)?.[1];
     if (og !== undefined) return packageOgImage(decoded(og));
+    const badge = BADGE.exec(pathname)?.[1];
+    if (badge !== undefined) return packageBadgeResponse(decoded(badge));
     const accept = request.headers.get('accept');
     const pkg = packagePathSpec(pathname);
     if (pkg !== undefined && (pkg.twin || wantsMarkdown(accept))) return packageMarkdownResponse(pkg.spec, pkg.twin);

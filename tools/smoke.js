@@ -199,6 +199,12 @@ try {
         const response = await fetch(`${frontend}/package/never-measured-smoke-package.md`);
         expect(response.status === 404 && response.headers.get('content-type')?.startsWith('text/markdown'), `got ${response.status} ${response.headers.get('content-type')}`);
     });
+
+    await check('frontend: a badge is an image, whether or not the package was measured', async () => {
+        const response = await fetch(`${frontend}/badge/never-measured-smoke-package.svg`);
+        expect(response.status === 200 && response.headers.get('content-type')?.startsWith('image/svg+xml'), `got ${response.status} ${response.headers.get('content-type')}`);
+        expect((await response.text()).startsWith('<svg'), 'the body is not an SVG');
+    });
 } catch (error) {
     failures.push(error.message);
     process.stderr.write(`Smoke test could not run: ${error.message}\n`);

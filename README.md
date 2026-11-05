@@ -116,6 +116,10 @@ curl "http://127.0.0.1:4100/v1/analyses?package=react@19.1.0&known=1"
 
 Errors share one shape, `{ error: { code, message, requestId } }`, with codes `VALIDATION_FAILED`, `NOT_FOUND`, `RATE_LIMITED`, `UNAUTHORIZED`, `UNAVAILABLE` and `INTERNAL`. The response shapes are defined once, as zod schemas, in [`packages/core/src/contract`](packages/core/src/contract).
 
+### Badge
+
+The frontend draws a badge with the gzip size at `/badge/<name>.svg`. Showing one never causes a download: a package not measured yet says so. Every package page has a button that copies the Markdown for a README.
+
 ## Configuration
 
 The backend reads its settings from the environment once at start-up and refuses to start with a readable message when one is invalid. The full list, with defaults, is in [`apps/backend/src/config/env.ts`](apps/backend/src/config/env.ts).
