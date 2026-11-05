@@ -1,5 +1,7 @@
 import { Link, useRouterState } from '@tanstack/react-router';
 import { PackageCheck } from 'lucide-react';
+import { DesktopNav } from '@components/DesktopNav';
+import { MobileNav } from '@components/MobileNav';
 import { PackageSearch } from '@components/PackageSearch';
 import { ThemeToggle } from '@components/ThemeToggle';
 import { siteConfig } from '@config/site';
@@ -20,13 +22,15 @@ export const SiteHeader = () => {
                     />
                     <span className={home ? undefined : 'hidden sm:inline'}>{siteConfig.title}</span>
                 </Link>
-                <div className={'flex min-w-0 flex-1 items-center justify-end gap-2'}>
+                <div className={'flex min-w-0 flex-1 items-center justify-end gap-1'}>
                     {!home && (
-                        <div className={'w-full max-w-xs'}>
+                        <div className={'mr-1 w-full max-w-xs'}>
                             <PackageSearch compact />
                         </div>
                     )}
+                    <DesktopNav />
                     <ThemeToggle />
+                    <MobileNav />
                 </div>
             </div>
         </header>
