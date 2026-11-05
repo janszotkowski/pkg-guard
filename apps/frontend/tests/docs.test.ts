@@ -5,12 +5,14 @@ import { describe, expect, it } from 'vitest';
 import { siteConfig } from '@config/site';
 import { DOC_PAGES, doc as lazyDoc, docsUrl, headingId, type Doc } from '@lib/docs';
 import apiSource from '@docs/API.md?raw';
+import architectureSource from '@docs/ARCHITECTURE.md?raw';
 import changelogSource from '@docs/CHANGELOG.md?raw';
 import mcpSource from '@docs/MCP.md?raw';
 
 const apiDoc = lazyDoc(apiSource)();
 const mcpDoc = lazyDoc(mcpSource)();
 const changelogDoc = lazyDoc(changelogSource)();
+const architectureDoc = lazyDoc(architectureSource)();
 
 type Node = { type?: unknown; href?: unknown; id?: unknown };
 
@@ -24,7 +26,7 @@ const nodes = (value: unknown): Node[] => {
 const headingIds = (doc: Doc) => new Set(nodes(doc.document.children).flatMap((node) => (node.type === 'heading' && typeof node.id === 'string' ? [node.id] : [])));
 const hrefs = (doc: Doc) => nodes(doc.document.children).flatMap((node) => (node.type === 'link' && typeof node.href === 'string' ? [node.href] : []));
 
-const docs = { '/api': apiDoc, '/mcp': mcpDoc, '/changelog': changelogDoc } satisfies Record<string, Doc>;
+const docs = { '/api': apiDoc, '/mcp': mcpDoc, '/changelog': changelogDoc, '/architecture': architectureDoc } satisfies Record<string, Doc>;
 const repository = `${siteConfig.repository}/blob/main/`;
 const root = fileURLToPath(new URL('../../../', import.meta.url));
 
@@ -62,7 +64,8 @@ describe('links of the documents', () => {
         expect(docsUrl('MCP.md')).toBe('/mcp');
         expect(docsUrl('CHANGELOG.md')).toBe('/changelog');
         expect(docsUrl('API.md#get-v1analyses')).toBe('/api#get-v1analyses');
-        expect(docsUrl('ARCHITECTURE.md#rate-limit')).toBe(`${repository}docs/ARCHITECTURE.md#rate-limit`);
+        expect(docsUrl('ARCHITECTURE.md#rate-limit')).toBe('/architecture#rate-limit');
+        expect(docsUrl('TODO.md')).toBe(`${repository}docs/TODO.md`);
         expect(docsUrl('../SECURITY.md')).toBe(`${repository}SECURITY.md`);
         expect(Object.values(DOC_PAGES).sort()).toEqual(Object.keys(docs).sort());
     });

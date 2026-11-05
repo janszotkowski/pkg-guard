@@ -20,7 +20,7 @@ API releases carry the version of the `/v1` contract; how it is versioned is at 
 
 ### Site
 
-- [API documentation](API.md) and an [MCP guide](MCP.md), each a page of the site, and an API catalog at `/.well-known/api-catalog`.
+- [API documentation](API.md), an [MCP guide](MCP.md) and [how it's built](ARCHITECTURE.md), each a page of the site, and an API catalog at `/.well-known/api-catalog`.
 - WebMCP tools: an AI agent in the browser can search packages, read what they cost, and open a package or a comparison, through the page itself.
 - A README badge with a package's gzip size at `/badge/<name>.svg`, with a button on each package page that copies it. Showing one never causes a download.
 - A how-it-works page, and navigation in the header and the footer, with one menu on a phone.

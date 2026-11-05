@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as ApiRouteImport } from './routes/api'
+import { Route as ArchitectureRouteImport } from './routes/architecture'
 import { Route as ChangelogRouteImport } from './routes/changelog'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as TrendsRouteImport } from './routes/trends'
@@ -30,6 +31,11 @@ const AboutRoute = AboutRouteImport.update({
 const ApiRoute = ApiRouteImport.update({
   id: '/api',
   path: '/api',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ArchitectureRoute = ArchitectureRouteImport.update({
+  id: '/architecture',
+  path: '/architecture',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ChangelogRoute = ChangelogRouteImport.update({
@@ -57,6 +63,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/api': typeof ApiRoute
+  '/architecture': typeof ArchitectureRoute
   '/changelog': typeof ChangelogRoute
   '/mcp': typeof McpRoute
   '/trends': typeof TrendsRoute
@@ -66,6 +73,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/api': typeof ApiRoute
+  '/architecture': typeof ArchitectureRoute
   '/changelog': typeof ChangelogRoute
   '/mcp': typeof McpRoute
   '/trends': typeof TrendsRoute
@@ -76,6 +84,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/api': typeof ApiRoute
+  '/architecture': typeof ArchitectureRoute
   '/changelog': typeof ChangelogRoute
   '/mcp': typeof McpRoute
   '/trends': typeof TrendsRoute
@@ -84,14 +93,30 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/about' | '/api' | '/changelog' | '/mcp' | '/trends' | '/package/$'
+    | '/'
+    | '/about'
+    | '/api'
+    | '/architecture'
+    | '/changelog'
+    | '/mcp'
+    | '/trends'
+    | '/package/$'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/about' | '/api' | '/changelog' | '/mcp' | '/trends' | '/package/$'
+  to:
+    | '/'
+    | '/about'
+    | '/api'
+    | '/architecture'
+    | '/changelog'
+    | '/mcp'
+    | '/trends'
+    | '/package/$'
   id:
     | '__root__'
     | '/'
     | '/about'
     | '/api'
+    | '/architecture'
     | '/changelog'
     | '/mcp'
     | '/trends'
@@ -102,6 +127,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
   ApiRoute: typeof ApiRoute
+  ArchitectureRoute: typeof ArchitectureRoute
   ChangelogRoute: typeof ChangelogRoute
   McpRoute: typeof McpRoute
   TrendsRoute: typeof TrendsRoute
@@ -129,6 +155,13 @@ declare module '@tanstack/react-router' {
       path: '/api'
       fullPath: '/api'
       preLoaderRoute: typeof ApiRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/architecture': {
+      id: '/architecture'
+      path: '/architecture'
+      fullPath: '/architecture'
+      preLoaderRoute: typeof ArchitectureRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/changelog': {
@@ -166,6 +199,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
   ApiRoute: ApiRoute,
+  ArchitectureRoute: ArchitectureRoute,
   ChangelogRoute: ChangelogRoute,
   McpRoute: McpRoute,
   TrendsRoute: TrendsRoute,

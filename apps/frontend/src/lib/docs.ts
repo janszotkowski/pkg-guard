@@ -22,7 +22,7 @@ export const headingId = (text: string): string =>
         .replace(/\s/g, '-');
 
 /** The files of `docs/` that are pages of the site, by the page they are. */
-export const DOC_PAGES: Readonly<Record<string, string>> = { 'API.md': '/api', 'MCP.md': '/mcp', 'CHANGELOG.md': '/changelog' };
+export const DOC_PAGES: Readonly<Record<string, string>> = { 'API.md': '/api', 'MCP.md': '/mcp', 'CHANGELOG.md': '/changelog', 'ARCHITECTURE.md': '/architecture' };
 
 /** What a document may link to besides a page: a web address or a mailbox. Any other scheme is not a link. */
 const DOC_LINK_SCHEMES: readonly string[] = ['https:', 'http:', 'mailto:'];

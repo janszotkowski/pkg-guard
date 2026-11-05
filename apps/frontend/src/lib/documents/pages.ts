@@ -41,6 +41,12 @@ export const PUBLIC_PAGES: readonly PublicPage[] = [
         prerender: true,
     },
     {
+        path: '/architecture',
+        title: 'How it’s built',
+        description: 'How pkg-guard is built: how a package is measured end to end, how untrusted code is kept contained, the rate limit and the threat model.',
+        prerender: true,
+    },
+    {
         path: '/changelog',
         title: 'Changelog',
         description: 'What changed on pkg-guard and in its public API, newest first: new features, API versions and the versioning policy that keeps scripts working.',

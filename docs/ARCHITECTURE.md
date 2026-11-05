@@ -17,7 +17,7 @@ apps/frontend    Web app: search, the package page, trends and how it works
 apps/cli         Command line: asks the API what a package costs and prints it
 packages/core    Shared contract: zod schemas, package name validation, the analyzer version, reading the API's answers
 docker           The configuration of the worker's network gateway
-docs             This page, and the API reference, MCP guide and changelog the site also shows
+docs             This page, the API reference, the MCP guide and the changelog, all of which the site also shows
 ```
 
 ## One analysis
@@ -74,7 +74,7 @@ What could go wrong, and what stands in the way. The controls are the ones descr
 - **Documents**: `robots.txt`, `sitemap.xml`, `llms.txt`, `.well-known/security.txt`, `.well-known/api-catalog` and `.well-known/ai-catalog.json`, share images at `/og/`, and each package as Markdown (`.md`, or `Accept: text/markdown`), all from `src/server.ts`.
 - **Reading never downloads**: documents, share images and README badges (`/badge/<name>.svg`) ask the API with `known=1`, so a crawler following them cannot cause a package to be measured.
 - **For programs and agents**: the [JSON API](API.md) with an OpenAPI description, an [MCP server](MCP.md) at `/v1/mcp` and WebMCP tools an agent in the browser can call. Tool calls count against the same rate limit and shares of their own, per caller and all callers together, and each queues at most one version, as opening a page does.
-- **One source for the reference**: the `/api`, `/mcp` and `/changelog` pages render `docs/API.md`, `docs/MCP.md` and `docs/CHANGELOG.md` at build time, so the site and the repository never disagree.
+- **One source for the reference**: the `/api`, `/mcp`, `/architecture` and `/changelog` pages render `docs/API.md`, `docs/MCP.md`, this file and `docs/CHANGELOG.md` at build time, so the site and the repository never disagree.
 
 ## Security headers
 

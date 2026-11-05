@@ -28,7 +28,7 @@ pkg-guard measures a package the first time someone asks for it, and keeps the r
 - **Its code never runs**: packages are installed without their scripts, in a Docker container with a read-only root, no capabilities, caps on memory, processors and processes, and a network that reaches only the npm registry; the bundler only reads them. What is downloaded stays on a Docker volume, never on the machine.
 - **Made to be found and cited**: every measured package has its own server-rendered page with structured data and a share image; a sitemap, `llms.txt`, and a Markdown version of every measured package for AI agents (`/package/<name>.md` or `Accept: text/markdown`).
 - **An MCP server for AI assistants**: connect Claude, Cursor or any other client to `/v1/mcp` and let it check what a dependency costs before adding it, with no key. An agent in the browser finds the same on the site's pages, as WebMCP tools.
-- **How it's built**: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+- **How it's built**: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), which the site shows at `/architecture`.
 - **Accessible**: WCAG 2.2 AA, checked with axe-core; full keyboard use (`Ctrl`/`⌘ K` for the search), screen reader announcements, light and dark themes, reduced motion, and a table view of every chart's numbers.
 
 ### How it works
