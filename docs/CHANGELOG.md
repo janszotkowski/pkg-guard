@@ -14,7 +14,7 @@ API releases carry the version of the `/v1` contract; how it is versioned is at 
 ### API 1.0.0
 
 - `GET /v1/openapi.json`: an OpenAPI 3.1 description of the whole API, generated from the schemas the answers are checked against. Generate a client in any language from it.
-- `POST /v1/mcp`: a [Model Context Protocol server](MCP.md), so an AI assistant can check what a dependency costs before adding it. No key, and within the rate limit of the rest of the API.
+- `POST /v1/mcp`: a [Model Context Protocol server](MCP.md), so an AI assistant can check what a dependency costs before adding it. No key, within the rate limit of the rest of the API and with limits of its own.
 - Every caller has a rate limit, with `RateLimit-*` headers and `Retry-After`. Queueing a package's versions has a much smaller share of its own, and those versions wait behind anything someone is waiting for.
 - Answers carry `ETag` and cache headers a CDN can use, and what the registry answers is read with a timeout and a byte cap.
 

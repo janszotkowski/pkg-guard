@@ -55,7 +55,7 @@ To read without ever causing a download, send `known=1`. A package not measured 
 
 ## Rate limit and caching
 
-Every address may make **300 requests a minute** to `/v1/*` (`/v1/health` does not count; IPv6 addresses are counted by their /64), of which at most **10 a minute** to `POST /v1/history`. Each response says where you stand:
+Every address may make **300 requests a minute** to `/v1/*` (`/v1/health` does not count; IPv6 addresses are counted by their /64), of which at most **10 a minute** to `POST /v1/history` and **60 a minute** to the [MCP server](MCP.md). Each response says where you stand:
 
 | Header                | Meaning                                  |
 | --------------------- | ---------------------------------------- |

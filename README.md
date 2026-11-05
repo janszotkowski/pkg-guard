@@ -139,7 +139,7 @@ Errors share one shape, `{ error: { code, message, requestId } }`, with codes `V
 
 ### MCP server
 
-An AI assistant can use the same data over the [Model Context Protocol](https://modelcontextprotocol.io). The server is free and needs no key. Each request counts against the API's rate limit.
+An AI assistant can use the same data over the [Model Context Protocol](https://modelcontextprotocol.io). The server is free and needs no key. It has limits of its own on top of the API's.
 
 ```bash
 claude mcp add --transport http pkg-guard http://127.0.0.1:4100/v1/mcp
@@ -180,6 +180,9 @@ The backend reads its settings from the environment once at start-up and refuses
 | `RATE_LIMIT_PER_MINUTE`                                             | `300`                            | Requests per caller per minute to `/v1/*` (health excepted)                                                                             |
 | `RATE_LIMIT_RENDER_PER_MINUTE`                                      | `600`                            | Requests the frontend's rendering may make per minute for one visitor it names                                                          |
 | `RATE_LIMIT_QUEUE_PER_MINUTE`                                       | `10`                             | Times one caller may queue a package's versions (`POST /v1/history`) per minute                                                         |
+| `MCP_ENABLED`                                                       | `true`                           | Offer the MCP server at `/v1/mcp`                                                                                                       |
+| `RATE_LIMIT_MCP_PER_MINUTE`                                         | `60`                             | Requests to `/v1/mcp` per caller per minute, on top of the general limit                                                                |
+| `RATE_LIMIT_MCP_TOTAL_PER_MINUTE`                                   | `1200`                           | Requests to `/v1/mcp` per minute for all callers together                                                                               |
 | `CLIENT_IP_HEADER`                                                  | connection address               | Single-value header the proxy overwrites with the visitor's address (`cf-connecting-ip`, `x-real-ip`); `x-forwarded-for` is refused     |
 | `QUEUE_MAX_WAITING`                                                 | `200`                            | Packages waiting at most; beyond it the API answers `503`                                                                               |
 | `JOB_LEASE_SECONDS`, `JOB_MAX_ATTEMPTS`, `JOB_FAILED_RETRY_MINUTES` | `180`, `2`, `60`                 | How long a worker may be silent about a job, how often a package is retried, and when a failed one is measured again                    |

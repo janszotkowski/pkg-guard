@@ -100,6 +100,10 @@ export const createBaseApp = (deps: { config: Config; logger: Logger }): Hono<Ap
     const limiter = createRateLimiter({ limit: deps.config.RATE_LIMIT_PER_MINUTE, windowMs: 60_000 });
     const renderLimiter = createRateLimiter({ limit: deps.config.RATE_LIMIT_RENDER_PER_MINUTE, windowMs: 60_000 });
     const queueLimiter = createRateLimiter({ limit: deps.config.RATE_LIMIT_QUEUE_PER_MINUTE, windowMs: 60_000 });
+    // An agent's calls count against shares of their own too, per caller and all callers together: the total holds MCP to a
+    // fixed part of the server whatever the number of addresses, and over it agents wait, visitors do not.
+    const mcpLimiter = createRateLimiter({ limit: deps.config.RATE_LIMIT_MCP_PER_MINUTE, windowMs: 60_000 });
+    const mcpTotalLimiter = createRateLimiter({ limit: deps.config.RATE_LIMIT_MCP_TOTAL_PER_MINUTE, windowMs: 60_000 });
     const internalToken = deps.config.INTERNAL_API_TOKEN;
     app.use('/v1/*', async (c, next) => {
         if (c.req.path === '/v1/health') return next();
@@ -117,6 +121,14 @@ export const createBaseApp = (deps: { config: Config; logger: Logger }): Hono<Ap
         const key = rendering ? renderKey() : clientKey(header, c.env?.incoming?.socket.remoteAddress);
         let result = (rendering ? renderLimiter : limiter).hit(key);
         if (result.allowed && QUEUES_WORK(c.req.method, c.req.path)) result = queueLimiter.hit(key);
+        if (result.allowed && c.req.path.startsWith('/v1/mcp')) {
+            result = mcpLimiter.hit(key);
+            if (result.allowed) {
+                // The headers report the caller's own share, the one it can plan by; the total speaks only when it says no.
+                const total = mcpTotalLimiter.hit('all');
+                if (!total.allowed) result = total;
+            }
+        }
         c.header('ratelimit-limit', String(result.limit));
         c.header('ratelimit-remaining', String(result.remaining));
         c.header('ratelimit-reset', String(result.resetSeconds));

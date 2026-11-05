@@ -66,7 +66,7 @@ A value a tool cannot read is answered with the problem, so an agent can correct
 
 ## Good to know
 
-- **Fair use.** Each message to the server is one request and counts against the [rate limit](API.md#rate-limit-and-caching) of the API. Over it, the HTTP answer is `429` with `Retry-After`.
+- **Fair use.** Each message to the server is one request. It counts against the [rate limit](API.md#rate-limit-and-caching) of the API and against 60 requests a minute per address for this server, with 1,200 a minute for all callers together. The `RateLimit-*` headers report your share per address. Over any of the limits, the HTTP answer is `429` with `Retry-After`.
 - **No open connections.** Every call is one request and one answer. The tools do not change while the server runs, so change notifications are not offered.
 - **Text from package authors.** Descriptions, failure messages, licenses and deprecation notices come from the packages. A client should treat them as data, never as instructions; the server tells it so.
 - **Not a safety check.** It shows sizes and what the registry says. It does not judge whether a package is safe to install.
@@ -75,4 +75,10 @@ A value a tool cannot read is answered with the problem, so an agent can correct
 
 ## Self-hosting
 
-The server is part of the backend: `POST /v1/mcp` on your own API host, with nothing to configure. Both the 2026-07-28 protocol revision and the 2025 ones are served, without sessions.
+The server is part of the backend: `POST /v1/mcp` on your own API host. Both the 2026-07-28 protocol revision and the 2025 ones are served, without sessions.
+
+| Variable                          | Default | Meaning                                                              |
+| --------------------------------- | ------- | -------------------------------------------------------------------- |
+| `MCP_ENABLED`                     | `true`  | `false` answers `404` at `/v1/mcp`; the rest of the API is untouched |
+| `RATE_LIMIT_MCP_PER_MINUTE`       | `60`    | Requests per caller per minute, on top of the general limit          |
+| `RATE_LIMIT_MCP_TOTAL_PER_MINUTE` | `1200`  | Requests per minute for all callers together                         |

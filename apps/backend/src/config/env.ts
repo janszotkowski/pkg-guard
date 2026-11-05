@@ -1,5 +1,11 @@
 import { z } from 'zod';
 
+const flag = (fallback: 'true' | 'false') =>
+    z
+        .enum(['true', 'false'])
+        .default(fallback)
+        .transform((value) => value === 'true');
+
 const LOG_LEVELS = ['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'] as const;
 
 /** The values in `.env.example`. They are public, so they are fine on a laptop and refused in production. */
@@ -55,6 +61,12 @@ const envSchema = z
         JOB_FAILED_RETRY_MINUTES: z.coerce.number().int().min(1).max(100_000).default(60),
         /** Requests one caller may make per minute to `/v1/*` (health excepted); one more is answered 429 with `Retry-After`. A page asks every second while its package is measured. */
         RATE_LIMIT_PER_MINUTE: z.coerce.number().int().min(1).max(100_000).default(300),
+        /** Offer the MCP server at `/v1/mcp`. Off answers 404 there, and the rest of the API is untouched. */
+        MCP_ENABLED: flag('true'),
+        /** Requests to `/v1/mcp` one caller may make per minute, on top of the general limit. */
+        RATE_LIMIT_MCP_PER_MINUTE: z.coerce.number().int().min(1).max(100_000).default(60),
+        /** Requests to `/v1/mcp` all callers together may make per minute: its most, however many addresses a flood comes from. */
+        RATE_LIMIT_MCP_TOTAL_PER_MINUTE: z.coerce.number().int().min(1).max(100_000).default(1200),
         /** Requests the frontend's rendering may make per minute for one visitor: a page asks for several things at once. */
         RATE_LIMIT_RENDER_PER_MINUTE: z.coerce.number().int().min(1).max(100_000).default(600),
         /** Times one caller may queue a package's versions (`POST /v1/history`) per minute: each has the worker download them. */

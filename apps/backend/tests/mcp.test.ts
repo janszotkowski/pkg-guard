@@ -128,6 +128,30 @@ describe('the MCP endpoint', () => {
         expect((await post(app)).status).toBe(429);
     });
 
+    it('has a smaller share of its own per caller, and says where the caller stands', async () => {
+        const { app } = setup({ RATE_LIMIT_MCP_PER_MINUTE: '1' });
+        const first = await post(app);
+        expect(first.status).toBe(200);
+        expect(first.headers.get('ratelimit-limit')).toBe('1');
+        const second = await post(app);
+        expect(second.status).toBe(429);
+        expect(second.headers.get('retry-after')).not.toBeNull();
+        // The rest of the API is not touched by it.
+        expect((await app.request('/v1/packages')).status).toBe(200);
+    });
+
+    it('holds all callers together to a total, whatever their addresses', async () => {
+        const { app } = setup({ RATE_LIMIT_MCP_TOTAL_PER_MINUTE: '1', CLIENT_IP_HEADER: 'x-real-ip' });
+        expect((await post(app, { 'x-real-ip': '198.51.100.1' })).status).toBe(200);
+        expect((await post(app, { 'x-real-ip': '198.51.100.2' })).status).toBe(429);
+    });
+
+    it('can be turned off, leaving the rest of the API alone', async () => {
+        const { app } = setup({ MCP_ENABLED: 'false' });
+        expect((await post(app)).status).toBe(404);
+        expect((await app.request('/v1/packages')).status).toBe(200);
+    });
+
     it('refuses a page elsewhere, and takes one the API knows', async () => {
         const { app } = setup({ CORS_ORIGINS: 'https://site.example' });
         expect((await post(app, { origin: 'https://evil.example' })).status).toBe(403);

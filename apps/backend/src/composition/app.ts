@@ -18,17 +18,19 @@ export const createApp = (container: Container): Hono<AppEnv> => {
         c.header('cache-control', 'no-store');
         return c.json({ status: 'ok' as const, version: container.config.APP_VERSION });
     });
-    app.route(
-        '/v1/mcp',
-        mcpRoutes({
-            store: container.store,
-            resolve: container.resolve,
-            readMetadata: container.readMetadata,
-            logger: container.logger,
-            corsOrigins: container.config.CORS_ORIGINS,
-            version: container.config.APP_VERSION,
-        }),
-    );
+    if (container.config.MCP_ENABLED) {
+        app.route(
+            '/v1/mcp',
+            mcpRoutes({
+                store: container.store,
+                resolve: container.resolve,
+                readMetadata: container.readMetadata,
+                logger: container.logger,
+                corsOrigins: container.config.CORS_ORIGINS,
+                version: container.config.APP_VERSION,
+            }),
+        );
+    }
     app.route('/v1', analysisRoutes(container, { rateLimitPerMinute: container.config.RATE_LIMIT_PER_MINUTE }));
     app.route('/internal', workerRoutes(container.store, container.config.WORKER_TOKEN));
     return app;
