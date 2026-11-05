@@ -123,3 +123,12 @@ describe.each(Object.entries(themes))('contrast in the %s theme', (_name, theme)
         expect(ratio(edge.color, solid(theme, surface))).toBeGreaterThanOrEqual(3);
     });
 });
+
+describe('links in a document', () => {
+    // The link colour has about 1.3 : 1 beside the text around it, far from 3 : 1, so colour alone cannot mark a link
+    // (WCAG 1.4.1). axe flags only some of them, so the rule itself is held here.
+    it('are underlined, not only coloured', () => {
+        const rule = /\n {4}a \{([^}]*)\}/.exec(readFileSync('src/styles/markdown.css', 'utf8'))?.[1];
+        expect(rule).toContain('text-decoration: underline');
+    });
+});
