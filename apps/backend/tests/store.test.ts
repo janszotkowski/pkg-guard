@@ -84,7 +84,7 @@ describe('analysis store', () => {
 
     it('measures what someone is waiting for before what was queued for later', () => {
         const { store } = setup();
-        store.enqueueLater({ name: 'later', version: '1.0.0' });
+        store.enqueueLater([{ name: 'later', version: '1.0.0' }]);
         store.findOrEnqueue(REF);
         expect(store.claim()?.package).toEqual(REF);
         expect(store.claim()?.package.name).toBe('later');
@@ -92,8 +92,8 @@ describe('analysis store', () => {
 
     it('moves a package up when someone starts waiting for it', () => {
         const { store } = setup();
-        store.enqueueLater({ name: 'later', version: '1.0.0' });
-        store.enqueueLater(REF);
+        store.enqueueLater([{ name: 'later', version: '1.0.0' }]);
+        store.enqueueLater([REF]);
         store.findOrEnqueue(REF);
         expect(store.claim()?.package).toEqual(REF);
     });
@@ -102,7 +102,7 @@ describe('analysis store', () => {
         const { store } = setup();
         store.findOrEnqueue(REF);
         store.complete(store.claim()?.id ?? 0, RESULT);
-        store.enqueueLater(REF);
+        store.enqueueLater([REF]);
         expect(store.find(REF)?.status).toBe('done');
         expect(store.claim()).toBeUndefined();
     });

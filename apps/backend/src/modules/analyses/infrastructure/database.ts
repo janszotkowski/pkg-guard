@@ -45,10 +45,13 @@ export const MIGRATIONS: readonly string[] = [
     `,
 ];
 
+/** Opens (and creates) the database, tuned for one writer and a few readers, and applies the migrations it lacks. */
 export const openDatabase = (path: string): Database => {
     if (path !== ':memory:') mkdirSync(dirname(path), { recursive: true });
     const db = new DatabaseSync(path);
-    db.exec('PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL; PRAGMA busy_timeout = 5000;');
+    // `foreign_keys` is off by default in SQLite; on, so that a later migration with a reference is enforced from the start.
+    // `analysis_limit`: ANALYZE (through `PRAGMA optimize`) samples this many rows per index instead of reading every one.
+    db.exec('PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000; PRAGMA analysis_limit = 1000;');
     const row = db.prepare('PRAGMA user_version').get() as { user_version: number };
     for (const [index, step] of MIGRATIONS.entries()) {
         if (index < row.user_version) continue;
@@ -63,4 +66,14 @@ export const openDatabase = (path: string): Database => {
         }
     }
     return db;
+};
+
+/**
+ * Gives the query planner statistics. `PRAGMA optimize` analyzes the tables whose indexes a query used without
+ * statistics, or whose size changed a lot, and is cheap when nothing did; a database that was never analyzed is analyzed
+ * whole, once (sampled, so it takes no time to speak of). Run now and then while the API serves, and before it closes.
+ */
+export const optimize = (db: Database): void => {
+    const analyzed = db.prepare("SELECT count(*) AS n FROM sqlite_master WHERE type = 'table' AND name = 'sqlite_stat1'").get() as { n: number };
+    db.exec(Number(analyzed.n) === 0 ? 'PRAGMA optimize(0x10002)' : 'PRAGMA optimize');
 };

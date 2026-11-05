@@ -98,6 +98,12 @@ export const analysisResponseSchema = z.discriminatedUnion('status', [
 
 export type AnalysisResponse = z.infer<typeof analysisResponseSchema>;
 
+/**
+ * Everything of a finished analysis has arrived: the result and the part-by-part numbers, or the news that there are
+ * none. Only such an answer is worth keeping; anything else is asked for again.
+ */
+export const isComplete = (answer: AnalysisResponse): boolean => answer.status === 'done' && answer.exports.status !== 'pending';
+
 /** The answer of `GET /v1/packages`: every package with a finished measurement, which is what is worth listing to a crawler. */
 export const packagesResponseSchema = z.object({ packages: z.array(z.object({ name: z.string(), measuredAt: z.string() })) });
 

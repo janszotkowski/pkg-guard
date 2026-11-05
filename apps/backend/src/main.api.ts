@@ -1,7 +1,7 @@
 import { serve } from '@hono/node-server';
 import { createApp } from '@composition/app.ts';
 import { loadConfig } from '@config/env.ts';
-import { openDatabase } from '@modules/analyses/infrastructure/database.ts';
+import { openDatabase, optimize } from '@modules/analyses/infrastructure/database.ts';
 import { cacheResolver, createDownloadsReader, createMetadataReader, createStarsReader, createVersionLister, resolveFromRegistry, searchRegistry } from '@modules/analyses/infrastructure/registry.ts';
 import { createAnalysisStore } from '@modules/analyses/infrastructure/store.ts';
 import { createLogger } from '@platform/logger.ts';
@@ -30,6 +30,15 @@ const store = createAnalysisStore(db, {
     maxAttempts: config.JOB_MAX_ATTEMPTS,
     failedRetryMs: config.JOB_FAILED_RETRY_MINUTES * 60_000,
 });
+// The planner's statistics follow the data: results arrive all day, so now and then, and once more before the file is closed.
+const OPTIMIZE_EVERY_MS = 60 * 60_000;
+setInterval(() => {
+    try {
+        optimize(db);
+    } catch (error) {
+        logger.warn({ err: error }, 'optimize failed');
+    }
+}, OPTIMIZE_EVERY_MS).unref();
 
 const server = serve(
     {
@@ -63,6 +72,11 @@ const shutdown = (signal: string): void => {
     }, 10_000);
     force.unref();
     server.close(() => {
+        try {
+            optimize(db);
+        } catch (error) {
+            logger.warn({ err: error }, 'optimize failed');
+        }
         db.close();
         process.exit(0);
     });

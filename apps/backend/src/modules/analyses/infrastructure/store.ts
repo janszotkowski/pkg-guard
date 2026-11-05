@@ -1,16 +1,4 @@
-import {
-    ANALYZER_VERSION,
-    analysisResponseSchema,
-    analysisResultSchema,
-    exportDetailsSchema,
-    type AnalysisFailure,
-    type AnalysisResponse,
-    type AnalysisResult,
-    type ExportDetails,
-    type ExportsState,
-    type Job,
-    type PackageRef,
-} from '@pkg-guard/core';
+import { ANALYZER_VERSION, analysisResponseSchema, type AnalysisFailure, type AnalysisResponse, type AnalysisResult, type ExportDetails, type Job, type PackageRef } from '@pkg-guard/core';
 import { AppError } from '@platform/errors.ts';
 import type { Database } from './database.ts';
 
@@ -31,9 +19,15 @@ type Row = {
 
 export type StoreOptions = { maxWaiting: number; leaseMs: number; maxAttempts: number; failedRetryMs: number; now?: () => number };
 
-/** A worker that went silent after the main result never sends the rest: past its time, the page stops waiting. */
-const exportsState = (row: Row, at: number): ExportsState => {
-    if (row.exports_status === 'done' && row.exports !== null) return { status: 'done', details: exportDetailsSchema.parse(JSON.parse(row.exports)) };
+/** 0 is someone waiting for this package; 1 is an older version measured on request, after anything that is waited for. */
+type Priority = 0 | 1;
+
+/**
+ * A worker that went silent after the main result never sends the rest: past its time, the page stops waiting. The shape
+ * is checked with the whole answer below, so the stored JSON is only read here.
+ */
+const exportsState = (row: Row, at: number): { status: string; details?: unknown } => {
+    if (row.exports_status === 'done' && row.exports !== null) return { status: 'done', details: JSON.parse(row.exports) as unknown };
     if (row.exports_status === 'pending' && at < (row.exports_until ?? 0)) return { status: 'pending' };
     return { status: 'unavailable' };
 };
@@ -41,18 +35,20 @@ const exportsState = (row: Row, at: number): ExportsState => {
 export const createAnalysisStore = (db: Database, options: StoreOptions) => {
     const now = options.now ?? Date.now;
 
+    /** A row as the contract has it. The stored result was validated when it came in; validating the whole answer once is what keeps the two in step. */
     const toResponse = (row: Row): AnalysisResponse =>
         analysisResponseSchema.parse({
             package: { name: row.name, version: row.version },
             analyzerVersion: ANALYZER_VERSION,
             status: row.status,
-            ...(row.result === null ? {} : { result: analysisResultSchema.parse(JSON.parse(row.result)), exports: exportsState(row, now()) }),
+            ...(row.result === null ? {} : { result: JSON.parse(row.result) as unknown, exports: exportsState(row, now()) }),
             ...(row.failure_code === null ? {} : { failure: { code: row.failure_code, message: row.failure_message ?? '' } }),
         });
 
     const measured = db.prepare("SELECT name, max(finished_at) AS finished_at FROM analyses WHERE status = 'done' AND analyzer_version = ? GROUP BY name ORDER BY name LIMIT ?");
     const select = db.prepare('SELECT * FROM analyses WHERE name = ? AND version = ? AND analyzer_version = ?');
-    const waiting = db.prepare("SELECT count(*) AS waiting FROM analyses WHERE status = 'queued'");
+    const waiting = db.prepare("SELECT count(*) AS waiting FROM analyses WHERE status = 'queued' AND priority = ?");
+    const running = db.prepare("SELECT count(*) AS running FROM analyses WHERE status = 'running'");
     const insert = db.prepare("INSERT INTO analyses (name, version, analyzer_version, status, requested_at) VALUES (?, ?, ?, 'queued', ?) RETURNING *");
     const insertLater = db.prepare("INSERT OR IGNORE INTO analyses (name, version, analyzer_version, status, requested_at, priority) VALUES (?, ?, ?, 'queued', ?, 1)");
     const promote = db.prepare('UPDATE analyses SET priority = 0 WHERE id = ? RETURNING *');
@@ -73,9 +69,12 @@ export const createAnalysisStore = (db: Database, options: StoreOptions) => {
     const finishExports = db.prepare("UPDATE analyses SET exports = ?, exports_status = 'done', exports_until = NULL WHERE id = ? AND exports_status = 'pending'");
     const failExports = db.prepare("UPDATE analyses SET exports_status = 'unavailable', exports_until = NULL WHERE id = ? AND exports_status = 'pending'");
 
-    const assertRoom = (): void => {
-        const { waiting: count } = waiting.get() as { waiting: number };
-        if (count >= options.maxWaiting) throw new AppError('UNAVAILABLE', 'Too many packages are waiting to be analyzed; try again in a moment');
+    /** Each priority has a line of its own: versions queued for later cannot crowd out what someone is waiting for. */
+    const assertRoom = (priority: Priority, adding: number): void => {
+        const { waiting: count } = waiting.get(priority) as { waiting: number };
+        if (count + adding > options.maxWaiting) {
+            throw new AppError('UNAVAILABLE', priority === 0 ? 'Too many packages are waiting to be analyzed; try again in a moment' : 'Too many versions are waiting to be analyzed; try again later');
+        }
     };
 
     return {
@@ -93,11 +92,11 @@ export const createAnalysisStore = (db: Database, options: StoreOptions) => {
         findOrEnqueue: (ref: PackageRef): AnalysisResponse => {
             const row = select.get(ref.name, ref.version, ANALYZER_VERSION) as Row | undefined;
             if (row === undefined) {
-                assertRoom();
+                assertRoom(0, 1);
                 return toResponse(insert.get(ref.name, ref.version, ANALYZER_VERSION, now()) as Row);
             }
             if (row.status === 'failed' && now() - (row.finished_at ?? 0) >= options.failedRetryMs) {
-                assertRoom();
+                assertRoom(0, 1);
                 return toResponse(requeue.get(now(), row.id) as Row);
             }
             // Someone is now waiting for what was queued for later.
@@ -105,18 +104,30 @@ export const createAnalysisStore = (db: Database, options: StoreOptions) => {
             return toResponse(row);
         },
 
-        /** Queues a version to be measured after anything someone is waiting for. What is already known stays as it is. */
-        enqueueLater: (ref: PackageRef): void => {
-            if (select.get(ref.name, ref.version, ANALYZER_VERSION) !== undefined) return;
-            assertRoom();
-            insertLater.run(ref.name, ref.version, ANALYZER_VERSION, now());
+        /** Queues versions to be measured after anything someone is waiting for: all of them, or none when there is no room. What is already known stays as it is. */
+        enqueueLater: (refs: readonly PackageRef[]): void => {
+            const unknown = refs.filter((ref) => select.get(ref.name, ref.version, ANALYZER_VERSION) === undefined);
+            if (unknown.length === 0) return;
+            assertRoom(1, unknown.length);
+            const at = now();
+            db.exec('BEGIN');
+            try {
+                for (const ref of unknown) insertLater.run(ref.name, ref.version, ANALYZER_VERSION, at);
+                db.exec('COMMIT');
+            } catch (error) {
+                db.exec('ROLLBACK');
+                throw error;
+            }
         },
 
         /** The oldest waiting package, for one worker. A job whose worker went silent goes back in line first, or fails when it has had its tries. */
         claim: (): Job | undefined => {
             const at = now();
-            giveUp.run(at, at, options.maxAttempts);
-            expire.run(at, options.maxAttempts);
+            // Leases only matter while something runs: a worker asking every second finds nothing to write most of the time.
+            if ((running.get() as { running: number }).running > 0) {
+                giveUp.run(at, at, options.maxAttempts);
+                expire.run(at, options.maxAttempts);
+            }
             const row = claimNext.get(at + options.leaseMs, ANALYZER_VERSION) as Pick<Row, 'id' | 'name' | 'version'> | undefined;
             return row === undefined ? undefined : { id: row.id, package: { name: row.name, version: row.version } };
         },
