@@ -10,7 +10,9 @@ import {
     searchResponseSchema,
     starsResponseSchema,
     type AnalysisResponse,
+    type DownloadsResponse,
     type HistoryResponse,
+    type PackageMetadata,
     type PackageSuggestion,
     type PackagesResponse,
     type TrendRange,
@@ -90,7 +92,8 @@ export const analysisQuery = (spec: string) => {
     });
 };
 
-const fetchSuggestions = async (query: string, signal: AbortSignal): Promise<PackageSuggestion[]> => {
+/** Packages matching a text. Failing is no answer at all, which is what the page shows then too. */
+export const fetchSuggestions = async (query: string, signal?: AbortSignal): Promise<PackageSuggestion[]> => {
     const response = await api(`/v1/search?q=${encodeURIComponent(query)}`, { signal });
     if (!response.ok) return [];
     return searchResponseSchema.parse(await response.json()).packages;
@@ -105,22 +108,30 @@ export const searchQuery = (query: string) =>
         placeholderData: keepPreviousData,
     });
 
+/** A package's recent versions. Reading this downloads nothing. */
+export const fetchHistory = async (name: string, signal?: AbortSignal): Promise<HistoryResponse> =>
+    answerOf(await api(`/v1/history?package=${encodeURIComponent(name)}`, { signal }), historyResponseSchema);
+
 /** A package's recent versions, asked for again while any of them is being measured. Reading this downloads nothing. */
 export const historyQuery = (name: string) =>
     queryOptions({
         queryKey: ['history', name],
-        queryFn: async ({ signal }) => answerOf(await api(`/v1/history?package=${encodeURIComponent(name)}`, { signal }), historyResponseSchema),
+        queryFn: ({ signal }) => fetchHistory(name, signal),
         refetchInterval: (query) => pollInterval(query, query.state.data?.versions.some((entry) => entry.status === 'queued' || entry.status === 'running') === true ? HISTORY_POLL_MS : false),
     });
 
 /** Queues every version not yet measured. Each of them will be downloaded, in the worker's own container. */
 export const measureHistory = async (name: string): Promise<HistoryResponse> => answerOf(await api(`/v1/history?package=${encodeURIComponent(name)}`, { method: 'POST' }), historyResponseSchema);
 
+/** A package's downloads per day, from npm. */
+export const fetchDownloads = async (name: string, range: TrendRange, signal?: AbortSignal): Promise<DownloadsResponse> =>
+    answerOf(await api(`/v1/downloads?package=${encodeURIComponent(name)}&range=${range}`, { signal }), downloadsResponseSchema);
+
 /** A package's downloads per day. npm updates them once a day, so they are kept for a while. */
 export const downloadsQuery = (name: string, range: TrendRange) =>
     queryOptions({
         queryKey: ['downloads', name, range],
-        queryFn: async ({ signal }) => answerOf(await api(`/v1/downloads?package=${encodeURIComponent(name)}&range=${range}`, { signal }), downloadsResponseSchema),
+        queryFn: ({ signal }) => fetchDownloads(name, range, signal),
         staleTime: 30 * 60_000,
     });
 
@@ -133,11 +144,15 @@ export const starsQuery = (repository: string | undefined) =>
         staleTime: 60 * 60_000,
     });
 
+/** What the registry says of one exact version. */
+export const fetchMetadata = async (name: string, version: string, signal?: AbortSignal): Promise<PackageMetadata> =>
+    answerOf(await api(`/v1/metadata?package=${encodeURIComponent(`${name}@${version}`)}`, { signal }), packageMetadataSchema);
+
 /** What npm says about one version. It comes from the registry, so reading it downloads no package. */
 export const metadataQuery = (name: string, version: string) =>
     queryOptions({
         queryKey: ['metadata', name, version],
-        queryFn: async ({ signal }) => answerOf(await api(`/v1/metadata?package=${encodeURIComponent(`${name}@${version}`)}`, { signal }), packageMetadataSchema),
+        queryFn: ({ signal }) => fetchMetadata(name, version, signal),
         staleTime: 30 * 60_000,
     });
 

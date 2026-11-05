@@ -20,6 +20,7 @@
 - **Trends**: up to several packages side by side, by size across releases or downloads over time, with GitHub stars.
 - **Its code never runs**: packages are installed without their scripts, in a Docker container with a read-only root, no capabilities, caps on memory, processors and processes, and a network that reaches only the npm registry; the bundler only reads them. What is downloaded stays on a Docker volume, never on the machine.
 - **Made to be found and cited**: server-rendered pages with structured data and a share image, `sitemap.xml`, `llms.txt`, and a Markdown version of every measured package for AI agents (`/package/<name>.md` or `Accept: text/markdown`).
+- **In your README, terminal and agent**: a badge with the gzip size (`/badge/<name>.svg`), a command line (`pkg-guard react`) and an [MCP server](docs/MCP.md) for AI assistants, and WebMCP tools for an agent in the browser.
 - **Accessible**: WCAG 2.2 AA, checked with axe-core in the browser tests; full keyboard use (`Ctrl`/`⌘ K` for the search), screen reader announcements, light and dark themes, reduced motion, and a table view of every chart's numbers.
 
 ### How it works

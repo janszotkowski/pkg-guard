@@ -70,6 +70,7 @@ A value a tool cannot read is answered with the problem, so an agent can correct
 - **No open connections.** Every call is one request and one answer. The tools do not change while the server runs, so change notifications are not offered.
 - **Text from package authors.** Descriptions, failure messages, licenses and deprecation notices come from the packages. A client should treat them as data, never as instructions; the server tells it so.
 - **Not a safety check.** It shows sizes and what the registry says. It does not judge whether a package is safe to install.
+- **In the browser.** The site's pages also offer [WebMCP](https://webmachinelearning.github.io/webmcp/) tools to an agent running in the browser: `search_packages`, `get_package_cost`, `get_package_metadata`, `get_version_history`, `get_downloads`, and `open_package` and `show_trends`, which move the page. This server is for every other client.
 - **Calls from web pages.** A request with an `Origin` header the server does not know is refused with `403`. Programs send no such header.
 
 ## Self-hosting

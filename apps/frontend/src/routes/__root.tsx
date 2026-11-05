@@ -4,6 +4,7 @@ import { LoadingIndicator } from '@components/LoadingIndicator';
 import { RouteAnnouncer } from '@components/RouteAnnouncer';
 import { SiteFooter } from '@components/SiteFooter';
 import { SiteHeader } from '@components/SiteHeader';
+import { WebMcpTools } from '@components/WebMcpTools';
 import { ALLOW_INDEXING, siteConfig } from '@config/site';
 import type { RouterContext } from '@lib/routerContext';
 import { THEME_BOOT_SCRIPT, THEME_COLOR } from '@lib/theme';
@@ -36,6 +37,7 @@ const RootDocument = () => (
                 <Outlet />
             </div>
             <SiteFooter />
+            <WebMcpTools />
             <Scripts />
         </body>
     </html>
