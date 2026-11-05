@@ -1,6 +1,6 @@
 import type { AnalysisResponse } from '@pkg-guard/core';
 import { canonicalUrl, siteConfig } from '@config/site';
-import { formatSizeText } from '@lib/format';
+import { formatDownloadTimes, formatSizeText } from '@lib/format';
 
 const acceptQualities = (accept: string): Map<string, number> => {
     const qualities = new Map<string, number>();
@@ -46,14 +46,16 @@ export const packageMarkdown = (analysis: AnalysisResponse): string => {
     const sections = [`# ${name}@${version}\n`];
     if (result.description !== null) sections.push(`${mdText(result.description)}\n`);
     const facts: string[] = [];
+    const madeForNode = result.environment.nodeBuiltins.length > 0 || result.environment.nativeAddons > 0;
     if (result.sizes === null) {
         facts.push(`This package has nothing to import, so it adds nothing to a bundle.${result.commands.length > 0 ? ` It installs the commands: ${result.commands.map(mdText).join(', ')}.` : ''}`);
     } else {
         facts.push(line('Minified and gzipped', formatSizeText(result.sizes.gzip)), line('Minified', formatSizeText(result.sizes.minified)), line('Brotli', formatSizeText(result.sizes.brotli)));
+        if (!madeForNode) facts.push(line('Download time', formatDownloadTimes(result.sizes.gzip)));
     }
     facts.push(line('Install size', formatSizeText(result.install.bytes)), line('Packages installed', String(result.install.packages)));
     if (result.peerDependencies.length > 0) facts.push(line('Peer dependencies, not counted', result.peerDependencies.map(mdText).join(', ')));
-    if (result.environment.nodeBuiltins.length > 0 || result.environment.nativeAddons > 0) facts.push('- It is made for Node.js, so the size is not what it costs in a web page.');
+    if (madeForNode) facts.push('- It is made for Node.js, so the size is not what it costs in a web page.');
     facts.push(line('Measured with', `${result.bundler.name} ${result.bundler.version}`));
     if (result.repositoryUrl !== null) facts.push(line('Source', `<${result.repositoryUrl}>`));
     sections.push(`${facts.join('\n')}\n`);

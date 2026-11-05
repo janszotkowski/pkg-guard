@@ -24,10 +24,13 @@ Do not use ${siteConfig.title} for: packages outside the public npm registry; a 
 - Peer dependencies are not counted, since the app brings them.
 - A package with nothing to import, such as a command-line tool, has an install size and no bundle size.
 - The share of each package in a bundle is an estimate, from sizes before minifying.
+- Download time is the gzip size divided by a fixed connection speed, without latency, parsing or running.
+- The full description is at ${canonicalUrl('/about')}.
 
 ## Pages
 - [Home](${canonicalUrl('/')})
 - [Package trends](${canonicalUrl('/trends')})
+- [How it works](${canonicalUrl('/about')})
 
 ## About
 Built by ${siteConfig.author.name} (${siteConfig.author.url}). Source code, under the MIT license: ${siteConfig.repository}

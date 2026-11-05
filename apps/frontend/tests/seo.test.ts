@@ -60,6 +60,7 @@ describe('documents', () => {
     it('the sitemap lists pages and measured packages, escaped', () => {
         const xml = sitemapXml([{ name: '@scope/a&b', measuredAt: '2026-11-04T00:00:00.000Z' }]);
         expect(xml).toContain(`<loc>${canonicalUrl('/trends')}</loc>`);
+        expect(xml).toContain(`<loc>${canonicalUrl('/about')}</loc>`);
         expect(xml).toContain('/package/@scope/a&amp;b</loc><lastmod>2026-11-04T00:00:00.000Z</lastmod>');
     });
 
@@ -72,6 +73,7 @@ describe('documents', () => {
         const text = llmsTxt();
         expect(text).toContain('Do not use');
         expect(text).toContain(canonicalUrl('/trends'));
+        expect(text).toContain(canonicalUrl('/about'));
     });
 });
 

@@ -2,7 +2,7 @@ import type { PackagesResponse } from '@pkg-guard/core';
 import { canonicalUrl } from '@config/site';
 
 /** The pages of the site itself, beside the package pages. */
-export const STATIC_PAGES: readonly string[] = ['/', '/trends'];
+export const STATIC_PAGES: readonly string[] = ['/', '/trends', '/about'];
 
 export const escapeXml = (value: string): string => value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&apos;');
 

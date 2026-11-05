@@ -13,7 +13,7 @@ pkg-guard is one TypeScript repository: a backend that stores what each npm pack
 ```
 apps/backend     HTTP API, the store of results and the queue (one SQLite table)
 apps/worker      Installs one package at a time, bundles it and reports its sizes
-apps/frontend    Web app: search and the package page
+apps/frontend    Web app: search, the package page, trends and how it works
 packages/core    Shared contract: zod schemas, package name validation, the analyzer version
 docs             This page
 ```
@@ -45,7 +45,7 @@ A package is untrusted code. It is read, never run:
 ## Search engines and agents
 
 - **One head for every page**: `pageHead` builds the title, description, canonical address, Open Graph and Twitter cards, and one JSON-LD graph.
-- **What is indexed**: the home page, the trends page and measured packages at their own address. A package still being measured, a page of one version and a chosen comparison are kept out, and so is every page outside production (`VITE_ALLOW_INDEXING`).
+- **What is indexed**: the home page, the trends page, the how-it-works page and measured packages at their own address. A package still being measured, a page of one version and a chosen comparison are kept out, and so is every page outside production (`VITE_ALLOW_INDEXING`).
 - **Documents**: `robots.txt`, `sitemap.xml`, `llms.txt`, `.well-known/security.txt` and `.well-known/ai-catalog.json`, share images at `/og/`, and each package as Markdown (`.md`, or `Accept: text/markdown`), all from `src/server.ts`.
 - **Reading never downloads**: documents and share images ask the API with `known=1`, so a crawler following them cannot cause a package to be measured.
 
@@ -66,4 +66,5 @@ Keyboard reachable with a skip link and visible focus, labelled controls, tables
 - **Peer dependencies are not counted**: the app brings them anyway.
 - **Composition is an estimate**: the bundler reports each module's size before minifying, so the page shows each package's share of the bundle and works out its minified size from that.
 - **Parts are bundled alone**: an entry point from `exports` or one named export, each in its own bundle, up to `MAX_NAMED` and `PARTS_BUDGET_MS`. The page says what was left out. CommonJS gets no per-export numbers, because bundlers cannot drop parts of it reliably.
+- **Download time is arithmetic**: the gzip size at a fixed speed for each connection, without latency, parsing or running. A package made for Node.js does not get one.
 - **Results are versioned**: `ANALYZER_VERSION` in `packages/core` is part of a result's key. Bump it when the way of measuring changes.

@@ -1,6 +1,7 @@
 import type { AnalysisResult } from '@pkg-guard/core';
+import { Link } from '@tanstack/react-router';
 import { FigureBand } from '@components/FigureBand';
-import { formatSize, formatSizeText } from '@lib/format';
+import { formatDownloadTimes, formatSize, formatSizeText } from '@lib/format';
 
 const MAX_BUILTINS_NAMED = 5;
 
@@ -61,6 +62,8 @@ export const SizeResult = (props: SizeResultProps) => {
     if (sizes === null) return <NothingToImport result={props.result} />;
     const gzip = formatSize(sizes.gzip);
     const note = environmentNote(environment);
+    // A package made for Node.js is not downloaded by a browser, so a time for it would mislead.
+    const madeForNode = environment.nodeBuiltins.length > 0 || environment.nativeAddons > 0;
 
     return (
         <div className={'flex flex-col gap-8'}>
@@ -70,6 +73,18 @@ export const SizeResult = (props: SizeResultProps) => {
                     {gzip.value}
                     <span className={'ml-3 text-title-1 text-muted-foreground'}>{gzip.unit}</span>
                 </p>
+                {!madeForNode && (
+                    <p className={'text-callout text-muted-foreground'}>
+                        Downloads in {formatDownloadTimes(sizes.gzip)}.{' '}
+                        <Link
+                            to={'/about'}
+                            hash={'download-time'}
+                            className={'text-link underline-offset-2 hover:underline'}
+                        >
+                            How this is worked out
+                        </Link>
+                    </p>
+                )}
             </div>
             {note !== undefined && (
                 <p
