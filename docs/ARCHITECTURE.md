@@ -44,7 +44,27 @@ A package is untrusted code. It is read, never run:
 - **Limits**: one process group per package, killed after `JOB_TIMEOUT_MS`, and a cap on installed bytes (`MAX_INSTALL_BYTES`).
 - **Validated names**: a package name reaches URLs and paths only through `isValidPackageName`.
 
-**Not there yet, and required before this runs on a public server:** limiting the worker's network to the npm registry, and a rate limit on the API, which crawlers opening pages of unmeasured packages would otherwise use to queue downloads.
+## Rate limit
+
+Every caller gets a share of the API per minute (`RATE_LIMIT_PER_MINUTE`), counted by address: the connection's, or the one in `CLIENT_IP_HEADER` behind a proxy that overwrites it (a header proxies append to, such as `x-forwarded-for`, is refused). IPv6 callers are counted by their /64. One more request is answered 429 with `Retry-After`, and every answer carries `RateLimit-Limit`, `RateLimit-Remaining` and `RateLimit-Reset`. Queueing a package's versions (`POST /v1/history`), which has the worker download them, counts against a much smaller share of its own (`RATE_LIMIT_QUEUE_PER_MINUTE`), and versions queued this way have a line of their own in the queue, so they cannot crowd out what someone is waiting for.
+
+The frontend's server renders pages for every visitor at once, so it is not one caller: it proves itself with `INTERNAL_API_TOKEN` and names the visitor in `x-visitor-ip`, whom the API then counts against `RATE_LIMIT_RENDER_PER_MINUTE`. The documents it renders for itself (the sitemap, share images) name none and share one count of the same size, so the token alone never means unlimited. Share images, the costliest thing the frontend draws, have a small limit per visitor of their own.
+
+**Not there yet, and required before this runs on a public server:** limiting the worker's network to the npm registry.
+
+## Threat model
+
+What could go wrong, and what stands in the way. The controls are the ones described above, gathered by the threat they answer.
+
+| Threat | Control |
+|---|---|
+| **Untrusted package code** runs on the server | It never runs: the bundler parses it (`--ignore-scripts`, no imports, no `binding.gyp` builds). One process group per package inside a hardened container (read-only filesystem, no capabilities, unprivileged user, memory and process limits), killed after `JOB_TIMEOUT_MS`, with a cap on installed bytes. The process holds no secrets and the worker no database. Still to do: the worker's network limited to the registry |
+| **The registry or its CDN misbehaves**: an error page, a huge or hostile document, a slow answer | Every answer is read with a timeout that covers the body and a byte cap (8 MiB; 64 MiB for a package's full document), past which it is given up on unread. Fields are read defensively, never trusted to have a shape. Full documents are parsed two at a time at most, and what was read is kept for a while, so one package in a burst costs one request. A failure is answered 503 with `Retry-After` and is not cached |
+| **Queue flooding**: a crawler or a script has the worker download the world | Opening a page queues at most the one version it shows; the versions of a history are queued only on an explicit `POST`, which has a share of its own (`RATE_LIMIT_QUEUE_PER_MINUTE`), behind what someone is waiting for. The queue has a ceiling (`QUEUE_MAX_WAITING`), past which the API answers 503 rather than piling up. Documents for crawlers ask with `known=1` and never queue |
+| **The internal token** reaches further than it should | It only moves a request from the per-caller limit to the per-visitor one; it opens nothing else. A request carrying it without a visitor, or with one that is no address, shares one count, so neither a leaked token nor a misconfigured proxy means unlimited. The example value is refused in production, and the token is compared in constant time |
+| **The frontend's server as a single caller** eats the whole limit | Its rendering names the visitor it works for, and each visitor is counted apart; what it renders for itself is counted together. Without the token it is one caller like any other, and the site degrades to a shared limit instead of failing |
+| **Log volume** as a way to fill the disk | Each request is one line: the path cut to 200 characters, no headers, the worker's polling at `debug`. Secrets are redacted by path should one ever be logged whole. Logs rotate in Compose |
+| **A caller chooses its own address** to escape the limit | The address comes from the connection unless `CLIENT_IP_HEADER` names a header the proxy overwrites; a header proxies append to is refused at start-up, and a value that is not exactly one address falls back to the connection. IPv6 callers are counted by their /64 |
 
 ## Search engines and agents
 

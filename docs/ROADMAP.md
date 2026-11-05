@@ -15,7 +15,7 @@ These download nothing extra and show a difference straight away.
 - [ ] **README badge (S)**: an SVG with the package's size, linking back to its page. It reads with `known=1`, so showing one never causes a download.
 - [ ] **Cost of a specific import (M)**: measure `import { a, b } from 'x'` as one bundle. Adding up the exports is wrong, because they share code.
 - [ ] **Similar packages (M)**: point to lighter replacements, such as `moment` to `dayjs`. The list is curated and has to be kept up by hand.
-- [ ] **`package.json` scan (M)**: paste the file and see which dependencies cost the most. It can queue many downloads at once, so it needs the rate limit from the [TODO](TODO.md) first.
+- [ ] **`package.json` scan (M)**: paste the file and see which dependencies cost the most. It can queue many downloads at once, so it needs a share of the rate limit of its own.
 
 ## 3. Outside the website
 
