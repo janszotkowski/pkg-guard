@@ -29,6 +29,7 @@ API releases carry the version of the `/v1` contract; how it is versioned is at 
 
 ### Command line and self-hosting
 
+- [DEPLOY.md](../DEPLOY.md) and two scripts set the site up on a small server behind a Cloudflare Tunnel, and update it.
 - A worker that cannot reach the API says so once, and asks less and less often.
 - A command line: `pkg-guard react` prints what a package costs and waits while it is measured, or prints the whole answer with `--json`. It is not on npm yet.
 - The worker's network reaches only the npm registry: it has no route out of Docker but a gateway with one fixed destination.

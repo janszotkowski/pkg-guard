@@ -44,6 +44,7 @@ It runs the dependency and workflow policy, lint, format check, typecheck, tests
 | `apps/frontend/src/lib`               | Formatting, API queries, trends, the documents for crawlers and agents (`documents/`), security headers                        |
 | `apps/frontend/src/server.ts`         | The server entry: documents and share images first, then the pages, every response with its headers                            |
 | `apps/e2e`                            | Browser tests (Playwright) of the built apps, with an axe-core audit                                                           |
+| `deploy`                              | The scripts that set up and update a server                                                                                    |
 | `tools`                               | The policy check, the smoke test, the `.env` initializer and the project's oxlint plugin                                       |
 
 ## Code style

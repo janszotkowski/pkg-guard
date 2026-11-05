@@ -11,7 +11,7 @@
 
 pkg-guard measures a package the first time someone asks for it, and keeps the result. A worker in a locked-down Docker container installs the package without running any of its scripts and bundles it with Rolldown. It needs no paid API and no account, and has no analytics.
 
-[API reference](docs/API.md) · [MCP server](docs/MCP.md) · [Changelog](docs/CHANGELOG.md) · [Architecture](docs/ARCHITECTURE.md) · [Roadmap](docs/ROADMAP.md) · [Contributing](CONTRIBUTING.md) · [License](LICENSE)
+[API reference](docs/API.md) · [MCP server](docs/MCP.md) · [Changelog](docs/CHANGELOG.md) · [Architecture](docs/ARCHITECTURE.md) · [Deployment](DEPLOY.md) · [Roadmap](docs/ROADMAP.md) · [Contributing](CONTRIBUTING.md) · [License](LICENSE)
 
 ## ✨ Features
 
@@ -69,6 +69,7 @@ apps/frontend    Web app (TanStack Start, Router, Query, Table, Charts; Tailwind
 apps/cli         Command line: asks the API what a package costs and prints it
 apps/e2e         Browser tests (Playwright) with an axe-core audit
 packages/core    Shared API contract (zod/mini), typed API client, package spec parsing
+deploy           The scripts that set up and update a server
 docker           The configuration of the worker's network gateway
 docs             API reference, MCP guide, changelog, architecture, roadmap
 tools            Policy check, smoke test, .env initializer, oxlint plugin
@@ -204,7 +205,9 @@ The frontend's settings are build-time (`VITE_*`, baked into the bundle) plus a 
 
 ## 🚢 Deployment
 
-pkg-guard has not been deployed yet, so this is what the repository provides rather than a tried guide. The whole product is the API, the frontend, the worker and its network gateway as containers, with the measurements in one SQLite file on a volume.
+**On your own server:** [DEPLOY.md](DEPLOY.md) is a step-by-step guide for a Hetzner server behind a Cloudflare Tunnel, with a script that sets everything up. pkg-guard has not been deployed yet, so it has not been tried on a real server.
+
+The whole product is the API, the frontend, the worker and its network gateway as containers, with the measurements in one SQLite file on a volume.
 
 ```bash
 SITE_URL=https://pkg.example.org \
@@ -227,6 +230,7 @@ Serverless platforms without Docker and a persistent disk do not fit: the databa
 - [Changelog](docs/CHANGELOG.md) lists what changed on the site and in the API.
 - [Architecture](docs/ARCHITECTURE.md) describes one analysis end to end, how packages are handled safely, the rate limit, the threat model, the documents for search engines and agents, the security headers and accessibility.
 - [Roadmap](docs/ROADMAP.md) lists the features that come next; the [TODO](docs/TODO.md) what must be done before the first public release.
+- [Deployment guide](DEPLOY.md) covers a production deployment behind a Cloudflare Tunnel.
 - [Security policy](SECURITY.md) explains how to report a vulnerability in pkg-guard.
 - [AGENTS.md](AGENTS.md) spells out the code style, dependency and architecture rules, for coding agents and people.
 

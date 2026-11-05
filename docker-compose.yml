@@ -8,6 +8,8 @@
 #                                profile is on, so they cannot be required here without breaking `pnpm dev`; the API, which runs
 #                                in production mode, refuses the public example values below and stops with a message instead.
 #                                For the worker to find the API, BACKEND_URL=http://api:4100.
+#   On a server                  DEPLOY.md: the same, with a Cloudflare Tunnel (`COMPOSE_PROFILES=app,tunnel` and `TUNNEL_TOKEN` in `.env`)
+#                                that connects out to Cloudflare, so the server opens no port to the internet.
 # What the worker downloads stays on the `worker-data` volume, inside Docker. `pnpm worker:clean` removes all of it.
 
 # Logs are rotated: without a cap, Docker keeps every line, and the access log of a busy month fills the disk.
@@ -147,6 +149,26 @@ services:
                 condition: service_healthy
         ports:
             - '127.0.0.1:3100:3100'
+
+    # The way in from the internet: routes `SITE_URL` to `frontend:3100` and `API_URL` to `api:4100`, as set up in the
+    # tunnel's public hostnames on Cloudflare. Started only with the `tunnel` profile, so a local run needs no token.
+    tunnel:
+        image: cloudflare/cloudflared:2026.10.0@sha256:9b49eed8f62806d5d45ddf59ecefb5710429598ea6d3fcccd2af938f621b2b07
+        profiles: [tunnel]
+        restart: unless-stopped
+        logging: *logging
+        <<: *hardening
+        mem_limit: 128m
+        pids_limit: 128
+        command: tunnel --no-autoupdate run
+        environment:
+            # Not required here: Compose reads the whole file even when the profile is off. cloudflared stops without it.
+            TUNNEL_TOKEN: ${TUNNEL_TOKEN:-}
+        depends_on:
+            frontend:
+                condition: service_healthy
+            api:
+                condition: service_healthy
 
 networks:
     # No route out of Docker: what is on it reaches only what else is on it.
