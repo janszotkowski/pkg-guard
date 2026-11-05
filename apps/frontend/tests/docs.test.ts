@@ -1,14 +1,16 @@
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { openApiDocument } from '@pkg-guard/core';
+import { API_VERSION, openApiDocument } from '@pkg-guard/core';
 import { describe, expect, it } from 'vitest';
 import { siteConfig } from '@config/site';
 import { DOC_PAGES, doc as lazyDoc, docsUrl, headingId, type Doc } from '@lib/docs';
 import apiSource from '@docs/API.md?raw';
+import changelogSource from '@docs/CHANGELOG.md?raw';
 import mcpSource from '@docs/MCP.md?raw';
 
 const apiDoc = lazyDoc(apiSource)();
 const mcpDoc = lazyDoc(mcpSource)();
+const changelogDoc = lazyDoc(changelogSource)();
 
 type Node = { type?: unknown; href?: unknown; id?: unknown };
 
@@ -22,7 +24,7 @@ const nodes = (value: unknown): Node[] => {
 const headingIds = (doc: Doc) => new Set(nodes(doc.document.children).flatMap((node) => (node.type === 'heading' && typeof node.id === 'string' ? [node.id] : [])));
 const hrefs = (doc: Doc) => nodes(doc.document.children).flatMap((node) => (node.type === 'link' && typeof node.href === 'string' ? [node.href] : []));
 
-const docs = { '/api': apiDoc, '/mcp': mcpDoc } satisfies Record<string, Doc>;
+const docs = { '/api': apiDoc, '/mcp': mcpDoc, '/changelog': changelogDoc } satisfies Record<string, Doc>;
 const repository = `${siteConfig.repository}/blob/main/`;
 const root = fileURLToPath(new URL('../../../', import.meta.url));
 
@@ -58,6 +60,7 @@ describe('links of the documents', () => {
 
     it('sends a document that is a page to the page, the rest to GitHub', () => {
         expect(docsUrl('MCP.md')).toBe('/mcp');
+        expect(docsUrl('CHANGELOG.md')).toBe('/changelog');
         expect(docsUrl('API.md#get-v1analyses')).toBe('/api#get-v1analyses');
         expect(docsUrl('ARCHITECTURE.md#rate-limit')).toBe(`${repository}docs/ARCHITECTURE.md#rate-limit`);
         expect(docsUrl('../SECURITY.md')).toBe(`${repository}SECURITY.md`);
@@ -68,6 +71,20 @@ describe('links of the documents', () => {
         expect(docsUrl('mailto:someone@example.org')).toBe('mailto:someone@example.org');
         expect(docsUrl('#get-v1analyses')).toBe('#get-v1analyses');
         for (const url of ['javascript:alert(1)', 'JavaScript:alert(1)', 'data:text/html,<script>', 'vbscript:x', 'ftp://example.org/x']) expect(docsUrl(url)).toBe('#');
+    });
+});
+
+describe('the changelog', () => {
+    it('lists every change under a day, newest first, and the policy last', () => {
+        const sections = changelogDoc.outline.filter((entry) => entry.depth === 2).map((entry) => entry.text);
+        expect(sections.at(-1)).toBe('Versioning policy');
+        const days = sections.slice(0, -1);
+        expect(days.every((text) => /^\d{4}-\d{2}-\d{2}/.test(text))).toBe(true);
+        expect(days).toEqual([...days].sort().reverse());
+    });
+
+    it('has a release for the version of the API', () => {
+        expect(changelogDoc.outline.map((entry) => entry.text)).toContain(`API ${API_VERSION}`);
     });
 });
 

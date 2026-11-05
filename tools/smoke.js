@@ -148,9 +148,9 @@ try {
         }
     });
 
-    await check('frontend: /, /about, /api and /mcp render with a title, an h1 and a canonical link', async () => {
+    await check('frontend: /, /about, /api, /mcp and /changelog render with a title, an h1 and a canonical link', async () => {
         // The wording of the headings is the SEO tests' business (they read it from the routes); here only that a page has one.
-        for (const path of ['/', '/about', '/api', '/mcp']) {
+        for (const path of ['/', '/about', '/api', '/mcp', '/changelog']) {
             const response = await fetch(`${frontend}${path}`);
             const html = await response.text();
             expect(response.status === 200, `${path}: got ${response.status}`);

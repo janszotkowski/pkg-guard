@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 test('on a phone, every page fits the screen without scrolling sideways', async ({ page }) => {
-    for (const path of ['/', '/about', '/api', '/mcp', '/trends', '/trends?packages=react', '/no-such-page']) {
+    for (const path of ['/', '/about', '/api', '/mcp', '/changelog', '/trends', '/trends?packages=react', '/no-such-page']) {
         await page.goto(path);
         const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
         expect(overflow, path).toBeLessThanOrEqual(0);

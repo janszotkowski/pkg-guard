@@ -27,6 +27,7 @@ export const NAV_GROUPS: readonly { title: string; links: readonly NavLink[] }[]
     {
         title: 'Project',
         links: [
+            { label: 'Changelog', to: '/changelog' },
             { label: 'GitHub repository', href: siteConfig.repository },
             { label: 'Security policy', href: `${siteConfig.repository}/blob/main/SECURITY.md` },
             { label: 'MIT license', href: `${siteConfig.repository}/blob/main/LICENSE` },

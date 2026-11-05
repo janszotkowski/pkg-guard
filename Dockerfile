@@ -91,7 +91,7 @@ ENV VITE_API_URL=$VITE_API_URL VITE_SITE_URL=$VITE_SITE_URL VITE_ALLOW_INDEXING=
 COPY tsconfig.base.json ./
 COPY packages/core packages/core
 COPY apps/frontend apps/frontend
-# The /api and /mcp pages render docs/API.md and docs/MCP.md at build time.
+# The /api, /mcp and /changelog pages render docs/API.md, docs/MCP.md and docs/CHANGELOG.md at build time.
 COPY docs docs
 RUN pnpm --filter @pkg-guard/frontend build
 

@@ -40,6 +40,12 @@ export const PUBLIC_PAGES: readonly PublicPage[] = [
         description: 'Let an AI assistant check what an npm package costs: the free pkg-guard MCP server, how to add it to Claude, Cursor or VS Code, and its tools.',
         prerender: true,
     },
+    {
+        path: '/changelog',
+        title: 'Changelog',
+        description: 'What changed on pkg-guard and in its public API, newest first: new features, API versions and the versioning policy that keeps scripts working.',
+        prerender: true,
+    },
 ];
 
 /** The paths of the site's own pages, the home page first. */

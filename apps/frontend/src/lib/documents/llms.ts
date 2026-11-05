@@ -43,6 +43,7 @@ Do not use ${siteConfig.title} for: packages outside the public npm registry; a 
 - [How it works](${canonicalUrl('/about')})
 - [API documentation](${canonicalUrl('/api')})
 - [MCP server: how to connect an AI assistant, and its tools](${canonicalUrl('/mcp')})
+- [Changelog: what changed on the site and in the API](${canonicalUrl('/changelog')})
 
 ## About
 Built by ${siteConfig.author.name} (${siteConfig.author.url}). Source code, under the MIT license: ${siteConfig.repository}

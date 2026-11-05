@@ -9,6 +9,7 @@ import { TREND_RANGES, downloadsResponseSchema, starsResponseSchema } from './tr
 /**
  * The version of the `/v1` contract, by semantic versioning: the minor grows with every addition (an endpoint, a
  * parameter, a field), the patch with a fix to what is documented. A breaking change is a new path (`/v2`), never this.
+ * docs/CHANGELOG.md lists every version.
  */
 export const API_VERSION = '1.0.0';
 

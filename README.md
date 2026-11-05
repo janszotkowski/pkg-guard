@@ -7,7 +7,7 @@
 
 > Early work in progress. It runs locally only; see [How it's built](docs/ARCHITECTURE.md), including what is still required before a public deployment, and the [TODO](docs/TODO.md).
 
-[How it's built](docs/ARCHITECTURE.md) · [API](docs/API.md) · [MCP server](docs/MCP.md) · [Roadmap](docs/ROADMAP.md) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [License](LICENSE)
+[How it's built](docs/ARCHITECTURE.md) · [API](docs/API.md) · [MCP server](docs/MCP.md) · [Changelog](docs/CHANGELOG.md) · [Roadmap](docs/ROADMAP.md) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [License](LICENSE)
 
 ## Features
 
@@ -170,7 +170,7 @@ The frontend's settings are build-time (`VITE_*`, baked into the bundle) plus a 
 ## Documentation
 
 - [How it's built](docs/ARCHITECTURE.md) describes one analysis end to end, how packages are handled safely, the rate limit, the documents for search engines and agents, the security headers and accessibility.
-- [API reference](docs/API.md) has every endpoint and field; the [MCP guide](docs/MCP.md) connects an AI assistant. The site shows both, at `/api` and `/mcp`.
+- [API reference](docs/API.md) has every endpoint and field; the [MCP guide](docs/MCP.md) connects an AI assistant. The [changelog](docs/CHANGELOG.md) lists what changed. The site shows all three, at `/api`, `/mcp` and `/changelog`.
 - [Roadmap](docs/ROADMAP.md) lists the features that come next; the [TODO](docs/TODO.md) what must be done before the first public release.
 - [Security policy](SECURITY.md) explains how to report a vulnerability in pkg-guard.
 - [AGENTS.md](AGENTS.md) spells out the conventions for coding agents (and people).

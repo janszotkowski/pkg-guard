@@ -292,6 +292,8 @@ The OpenAPI 3.1 description of the endpoints above.
 
 The `/v1` contract is versioned semantically; its version is `info.version` of [`/v1/openapi.json`](#get-v1openapijson). Within `/v1` only additions are made (an endpoint, a parameter, a field, an enum value): ignore what you do not know. A breaking change gets a new path, `/v2`, with `/v1` kept running alongside it.
 
+Every change to the API and the site is in the [changelog](CHANGELOG.md), with the full [versioning policy](CHANGELOG.md#versioning-policy).
+
 ## OpenAPI and typed clients
 
 [`/v1/openapi.json`](#get-v1openapijson) generates a client in most languages:

@@ -79,7 +79,7 @@ test.describe('accessibility', () => {
     });
 
     test('the documentation pages pass the accessibility audit', async ({ page }) => {
-        for (const path of ['/api', '/mcp']) {
+        for (const path of ['/api', '/mcp', '/changelog']) {
             await page.goto(path);
             await page.waitForLoadState('networkidle');
             expect(await axeViolations(page), path).toEqual([]);
