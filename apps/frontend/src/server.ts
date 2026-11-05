@@ -8,7 +8,7 @@ import { fetchKnownAnalysis, fetchMeasuredPackages } from '@lib/api';
 import { clientIpHeader, requestIp } from '@lib/clientIp';
 import { compressed } from '@lib/compression';
 import { packageBadge, type Badge } from '@lib/documents/badge';
-import { aiCatalog } from '@lib/documents/discovery';
+import { API_CATALOG_TYPE, aiCatalog, apiCatalog } from '@lib/documents/discovery';
 import { llmsTxt } from '@lib/documents/llms';
 import { markdownTokens, notMeasuredMarkdown, packageMarkdown, packagePathSpec, wantsMarkdown } from '@lib/documents/markdown';
 import { robotsTxt } from '@lib/documents/robots';
@@ -108,6 +108,7 @@ const DOCUMENTS: Readonly<Record<string, () => Response | Promise<Response>>> = 
     '/robots.txt': () => text(robotsTxt(ALLOW_INDEXING), 'text/plain; charset=utf-8'),
     '/llms.txt': () => text(llmsTxt(), 'text/plain; charset=utf-8'),
     '/.well-known/security.txt': () => text(securityTxt(new Date()), 'text/plain; charset=utf-8', 'public, max-age=86400'),
+    '/.well-known/api-catalog': () => text(apiCatalog(), API_CATALOG_TYPE),
     // Read by agents and registries from other origins, so any page may fetch it.
     '/.well-known/ai-catalog.json': () => text(aiCatalog(), 'application/json; charset=utf-8', DOCUMENT_CACHE, 200, { 'access-control-allow-origin': '*' }),
     '/sitemap.xml': async () => text(sitemapIndex((await measuredPackages()).length), 'application/xml; charset=utf-8'),
@@ -247,6 +248,7 @@ const respond = async (request: Request): Promise<Response> => {
     // The same address answers Markdown to agents (package pages), so a shared cache must keep the two apart.
     headers.append('Vary', 'Accept');
     headers.append('Link', `<${canonicalUrl('/llms.txt')}>; rel="describedby"; type="text/plain"`);
+    headers.append('Link', `<${canonicalUrl('/.well-known/api-catalog')}>; rel="api-catalog"`);
     const pkg = packagePathSpec(pathname);
     if (pkg !== undefined && !pkg.twin) headers.append('Link', `<${canonicalUrl(`/package/${pkg.spec}.md`)}>; rel="alternate"; type="text/markdown"`);
     // Rendered here, past Nitro's compression of static files.

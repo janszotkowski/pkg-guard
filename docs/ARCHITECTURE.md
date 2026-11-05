@@ -14,8 +14,10 @@ pkg-guard is one TypeScript repository: a backend that stores what each npm pack
 apps/backend     HTTP API, the store of results and the queue (one SQLite table)
 apps/worker      Installs one package at a time, bundles it and reports its sizes
 apps/frontend    Web app: search, the package page, trends and how it works
-packages/core    Shared contract: zod schemas, package name validation, the analyzer version
-docs             This page
+apps/cli         Command line: asks the API what a package costs and prints it
+packages/core    Shared contract: zod schemas, package name validation, the analyzer version, reading the API's answers
+docker           The configuration of the worker's network gateway
+docs             This page, and the API reference and MCP guide the site also shows
 ```
 
 ## One analysis
@@ -69,8 +71,10 @@ What could go wrong, and what stands in the way. The controls are the ones descr
 
 - **One head for every page**: `pageHead` builds the title, description, canonical address, Open Graph and Twitter cards, and one JSON-LD graph.
 - **What is indexed**: the home page, the trends page, the how-it-works page and measured packages at their own address. A package still being measured, a page of one version and a chosen comparison are kept out, and so is every page outside production (`VITE_ALLOW_INDEXING`).
-- **Documents**: `robots.txt`, `sitemap.xml`, `llms.txt`, `.well-known/security.txt` and `.well-known/ai-catalog.json`, share images at `/og/`, and each package as Markdown (`.md`, or `Accept: text/markdown`), all from `src/server.ts`.
-- **Reading never downloads**: documents and share images ask the API with `known=1`, so a crawler following them cannot cause a package to be measured.
+- **Documents**: `robots.txt`, `sitemap.xml`, `llms.txt`, `.well-known/security.txt`, `.well-known/api-catalog` and `.well-known/ai-catalog.json`, share images at `/og/`, and each package as Markdown (`.md`, or `Accept: text/markdown`), all from `src/server.ts`.
+- **Reading never downloads**: documents, share images and README badges (`/badge/<name>.svg`) ask the API with `known=1`, so a crawler following them cannot cause a package to be measured.
+- **For programs and agents**: the [JSON API](API.md) with an OpenAPI description and an [MCP server](MCP.md) at `/v1/mcp`. Tool calls count against the same rate limit, and each queues at most one version, as opening a page does.
+- **One source for the reference**: the `/api` and `/mcp` pages render `docs/API.md` and `docs/MCP.md` at build time, so the site and the repository never disagree.
 
 ## Security headers
 

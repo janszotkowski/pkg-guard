@@ -78,6 +78,14 @@ test.describe('accessibility', () => {
         expect(await axeViolations(page)).toEqual([]);
     });
 
+    test('the documentation pages pass the accessibility audit', async ({ page }) => {
+        for (const path of ['/api', '/mcp']) {
+            await page.goto(path);
+            await page.waitForLoadState('networkidle');
+            expect(await axeViolations(page), path).toEqual([]);
+        }
+    });
+
     test('the trends page with a package passes the accessibility audit', async ({ page }) => {
         // No worker runs here: react is queued and stays queued, and the page says so instead of showing numbers.
         await page.goto('/trends?packages=react');

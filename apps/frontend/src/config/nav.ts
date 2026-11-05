@@ -1,4 +1,5 @@
 import type { LinkProps } from '@tanstack/react-router';
+import { API_URL } from '@config/api';
 import { siteConfig } from '@config/site';
 
 /** A link of the site's navigation: a page of the site (`to`, opened by the router, with a clean filter) or any other address (`href`). */
@@ -15,6 +16,15 @@ export const NAV_GROUPS: readonly { title: string; links: readonly NavLink[] }[]
         ],
     },
     {
+        title: 'Use the data',
+        links: [
+            { label: 'API docs', to: '/api' },
+            { label: 'MCP server', to: '/mcp' },
+            { label: 'Public API', href: `${API_URL}/v1/packages` },
+            { label: 'llms.txt', href: '/llms.txt' },
+        ],
+    },
+    {
         title: 'Project',
         links: [
             { label: 'GitHub repository', href: siteConfig.repository },
@@ -27,6 +37,8 @@ export const NAV_GROUPS: readonly { title: string; links: readonly NavLink[] }[]
 /** The header's links: the pages beside the search, which the header already is. */
 export const HEADER_LINKS: readonly NavLink[] = [
     { label: 'Trends', to: '/trends' },
+    { label: 'API', to: '/api' },
+    { label: 'MCP', to: '/mcp' },
     { label: 'How it works', to: '/about' },
 ];
 

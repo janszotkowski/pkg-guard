@@ -34,7 +34,7 @@ A pnpm workspace with Turborepo: `apps/backend` (Hono API over SQLite, the job q
     | --------------- | -------------------------------------------------------------------------- |
     | `apps/backend`  | `@config` `@platform` `@modules` `@composition` `@src` `@tests`            |
     | `apps/worker`   | `@config` `@modules` `@src` `@tests`                                       |
-    | `apps/frontend` | `@components` `@config` `@lib` `@routes` `@styles` `@src` `@tests` `@vite` |
+    | `apps/frontend` | `@components` `@config` `@docs` `@lib` `@routes` `@styles` `@src` `@tests` `@vite` |
     | `apps/cli`      | `@src` `@tests`                                                            |
     | `packages/core` | `@src` `@tests` (tests only; `src` keeps relative imports, other packages consume it as source) |
 

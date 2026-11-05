@@ -28,6 +28,18 @@ export const PUBLIC_PAGES: readonly PublicPage[] = [
         description: 'Compare npm packages side by side: minified and gzip size across releases, downloads over time, install size and GitHub stars.',
         prerender: false,
     },
+    {
+        path: '/api',
+        title: 'API documentation',
+        description: 'The free public pkg-guard API: every endpoint and field, with rate limits, error codes and examples for scripts and command-line tools.',
+        prerender: true,
+    },
+    {
+        path: '/mcp',
+        title: 'MCP server',
+        description: 'Let an AI assistant check what an npm package costs: the free pkg-guard MCP server, how to add it to Claude, Cursor or VS Code, and its tools.',
+        prerender: true,
+    },
 ];
 
 /** The paths of the site's own pages, the home page first. */

@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import type { AnalysisResponse } from '@pkg-guard/core';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { canonicalUrl, siteConfig } from '@config/site';
-import { API_DOCUMENTATION_URL, aiCatalog } from '@lib/documents/discovery';
+import { aiCatalog, apiCatalog } from '@lib/documents/discovery';
 import { llmsTxt } from '@lib/documents/llms';
 import { markdownTokens, notMeasuredMarkdown, packageMarkdown, packagePathSpec, wantsMarkdown } from '@lib/documents/markdown';
 import { PUBLIC_PAGES, STATIC_PAGES } from '@lib/documents/pages';
@@ -203,13 +203,21 @@ describe('documents', () => {
         for (const [, href] of text.matchAll(/\]\(([^)]+)\)/g)) expect(href).toMatch(/^https?:\/\//);
     });
 
+    it('lists the API in an RFC 9727 catalog', () => {
+        const [catalog, entry] = (JSON.parse(apiCatalog()) as { linkset: Record<string, unknown>[] }).linkset;
+        expect(catalog?.['anchor']).toMatch(/\/\.well-known\/api-catalog$/);
+        expect(catalog?.['item']).toEqual([expect.objectContaining({ href: entry?.['anchor'] })]);
+        expect(entry?.['anchor']).toMatch(/\/v1$/);
+        expect(entry).toHaveProperty('service-doc');
+        expect(entry).toHaveProperty('service-desc');
+        expect(entry).toHaveProperty('status');
+    });
+
     it('describes the API and llms.txt in the ARD catalog, each with one of url or data', () => {
         const catalog = JSON.parse(aiCatalog()) as { specVersion: string; entries: Record<string, unknown>[] };
         expect(catalog.specVersion).not.toBe('');
         const api = catalog.entries.find((entry) => entry['displayName'] === `${siteConfig.title} API`);
-        expect(api?.['url']).toMatch(/\/v1\/$/);
-        expect(api?.['documentation']).toBe(API_DOCUMENTATION_URL);
-        expect(API_DOCUMENTATION_URL).toBe('https://github.com/janszotkowski/pkg-guard/blob/main/docs/ARCHITECTURE.md');
+        expect(api?.['url']).toBe(canonicalUrl('/.well-known/api-catalog'));
         for (const entry of catalog.entries) {
             expect(entry['identifier']).toMatch(/^urn:air:[^:]+:[^:]+:[^:]+$/);
             expect('url' in entry !== 'data' in entry).toBe(true);

@@ -7,7 +7,7 @@
 
 > Early work in progress. It runs locally only; see [How it's built](docs/ARCHITECTURE.md), including what is still required before a public deployment, and the [TODO](docs/TODO.md).
 
-[How it's built](docs/ARCHITECTURE.md) · [Roadmap](docs/ROADMAP.md) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [License](LICENSE)
+[How it's built](docs/ARCHITECTURE.md) · [API](docs/API.md) · [MCP server](docs/MCP.md) · [Roadmap](docs/ROADMAP.md) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [License](LICENSE)
 
 ## Features
 
@@ -96,24 +96,26 @@ pnpm worker:clean   # stop it and delete everything it downloaded
 
 ## Usage
 
-The API is JSON over HTTP and works from a browser, a script or any HTTP client:
+The API is JSON over HTTP and works from a browser, a script or any HTTP client. [The API reference](docs/API.md) has every field, and `/v1/openapi.json` describes it in OpenAPI 3.1 (the site shows the reference at `/api` and the MCP guide at `/mcp`):
 
 ```bash
 curl "http://127.0.0.1:4100/v1/analyses?package=react"
 curl "http://127.0.0.1:4100/v1/analyses?package=react@19.1.0&known=1"
 ```
 
-| Endpoint            | Returns                                                                                                                                                                       |
-| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GET /v1/health`    | `{ status, version }`                                                                                                                                                         |
-| `GET /v1/analyses`  | The analysis of `package` (a name, optionally `@version` or `@tag`): queued, running, done or failed. `known=1` reads only what has been measured and never queues a download |
-| `GET /v1/history`   | Every version of `package`, with the sizes of the measured ones                                                                                                               |
-| `POST /v1/history`  | Queues every version of `package` to be measured (rate limited on its own, since each means a download)                                                                       |
-| `GET /v1/downloads` | Downloads of `package` per day over `range`                                                                                                                                   |
-| `GET /v1/metadata`  | What the registry says about `package@version`: licence, types, module format, scripts                                                                                        |
-| `GET /v1/stars`     | GitHub stars of `repository` (`owner/name`)                                                                                                                                   |
-| `GET /v1/search`    | Packages matching `q`                                                                                                                                                         |
-| `GET /v1/packages`  | Every measured package (what the sitemap lists)                                                                                                                               |
+| Endpoint               | Returns                                                                                                                                                                       |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /v1/health`       | `{ status, version }`                                                                                                                                                         |
+| `GET /v1/analyses`     | The analysis of `package` (a name, optionally `@version` or `@tag`): queued, running, done or failed. `known=1` reads only what has been measured and never queues a download |
+| `GET /v1/history`      | Every version of `package`, with the sizes of the measured ones                                                                                                               |
+| `POST /v1/history`     | Queues every version of `package` to be measured (rate limited on its own, since each means a download)                                                                       |
+| `GET /v1/downloads`    | Downloads of `package` per day over `range`                                                                                                                                   |
+| `GET /v1/metadata`     | What the registry says about `package@version`: licence, types, module format, scripts                                                                                        |
+| `GET /v1/stars`        | GitHub stars of `repository` (`owner/name`)                                                                                                                                   |
+| `GET /v1/search`       | Packages matching `q`                                                                                                                                                         |
+| `GET /v1/packages`     | Every measured package (what the sitemap lists)                                                                                                                               |
+| `GET /v1/openapi.json` | The OpenAPI 3.1 description of the API                                                                                                                                        |
+| `POST /v1/mcp`         | The [MCP server](docs/MCP.md), for AI assistants                                                                                                                              |
 
 Errors share one shape, `{ error: { code, message, requestId } }`, with codes `VALIDATION_FAILED`, `NOT_FOUND`, `RATE_LIMITED`, `UNAUTHORIZED`, `UNAVAILABLE` and `INTERNAL`. The response shapes are defined once, as zod schemas, in [`packages/core/src/contract`](packages/core/src/contract).
 
@@ -167,6 +169,7 @@ The frontend's settings are build-time (`VITE_*`, baked into the bundle) plus a 
 ## Documentation
 
 - [How it's built](docs/ARCHITECTURE.md) describes one analysis end to end, how packages are handled safely, the rate limit, the documents for search engines and agents, the security headers and accessibility.
+- [API reference](docs/API.md) has every endpoint and field; the [MCP guide](docs/MCP.md) connects an AI assistant. The site shows both, at `/api` and `/mcp`.
 - [Roadmap](docs/ROADMAP.md) lists the features that come next; the [TODO](docs/TODO.md) what must be done before the first public release.
 - [Security policy](SECURITY.md) explains how to report a vulnerability in pkg-guard.
 - [AGENTS.md](AGENTS.md) spells out the conventions for coding agents (and people).
@@ -211,12 +214,13 @@ One configuration for the whole monorepo in the root: `oxlint.config.ts` and `ox
 - **React components take one `props` parameter and read `props.x`**, never a destructured parameter list: `const ErrorState = (props: ErrorStateProps) => …`, not `({ error, reset }: ErrorStateProps) => …`. A component that forwards the rest to a primitive splits it off inside the body (`const { className, ...rest } = props`). Enforced by the project rules `pkgguard/no-destructured-component-props` and `pkgguard/no-inline-component-props-type` (`tools/oxlint-plugin.js`, an oxlint JS plugin).
 - **Imports use path aliases, never `../`** and never `./folder/…`: `import { AppError } from '@platform/errors.ts'`. Only a sibling in the same folder (`./name`) may be relative. Every top-level folder of a package is an alias of the same name, plus `@src` and `@tests`:
 
-    | Package         | Aliases (tsconfig `paths`)                                                 |
-    | --------------- | -------------------------------------------------------------------------- |
-    | `apps/backend`  | `@config` `@platform` `@modules` `@composition` `@src` `@tests`            |
-    | `apps/worker`   | `@config` `@modules` `@src` `@tests`                                       |
-    | `apps/frontend` | `@components` `@config` `@lib` `@routes` `@styles` `@src` `@tests` `@vite` |
-    | `packages/core` | `@src` `@tests`, for tests only                                            |
+    | Package         | Aliases (tsconfig `paths`)                                                         |
+    | --------------- | ---------------------------------------------------------------------------------- |
+    | `apps/backend`  | `@config` `@platform` `@modules` `@composition` `@src` `@tests`                    |
+    | `apps/worker`   | `@config` `@modules` `@src` `@tests`                                               |
+    | `apps/frontend` | `@components` `@config` `@docs` `@lib` `@routes` `@styles` `@src` `@tests` `@vite` |
+    | `apps/cli`      | `@src` `@tests`                                                                    |
+    | `packages/core` | `@src` `@tests`, for tests only                                                    |
 
     Vite, Vitest and tsdown resolve them from `tsconfig.json`; `tsc` too. Exceptions (the lint rule is off there): the config-time files (`vite.config.ts`, `vitest.config.ts`, `tsdown.config.ts`, `apps/frontend/vite/**`), which run before aliases exist, and `packages/core/src`, which other packages consume as source and which therefore cannot rely on its own aliases (it keeps relative imports).
 

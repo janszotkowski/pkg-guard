@@ -138,6 +138,7 @@ try {
             ['/sitemaps/pages.xml', /^application\/xml/, /<urlset[\s\S]*<loc>[^<]+\/about<\/loc>/],
             ['/llms.txt', /^text\/plain/, /^# /],
             ['/.well-known/security.txt', /^text\/plain/, /^Contact: /m],
+            ['/.well-known/api-catalog', /^application\/linkset\+json/, /"service-desc"/],
         ];
         for (const [path, type, content] of documents) {
             const response = await fetch(`${frontend}${path}`);
@@ -147,14 +148,15 @@ try {
         }
     });
 
-    await check('frontend: / and /about render with a title, an h1 and a canonical link', async () => {
+    await check('frontend: /, /about, /api and /mcp render with a title, an h1 and a canonical link', async () => {
         // The wording of the headings is the SEO tests' business (they read it from the routes); here only that a page has one.
-        for (const path of ['/', '/about']) {
+        for (const path of ['/', '/about', '/api', '/mcp']) {
             const response = await fetch(`${frontend}${path}`);
             const html = await response.text();
             expect(response.status === 200, `${path}: got ${response.status}`);
             expect(/<title>[^<]+<\/title>/.test(html), `${path}: no title`);
-            expect(/<h1[^>]*>[^<]+<\/h1>/.test(html), `${path}: no h1 with text`);
+            // Not up to `</h1>`: a heading from a document has its anchor link after the text.
+            expect(/<h1[^>]*>[^<]+/.test(html), `${path}: no h1 with text`);
             expect(html.includes('rel="canonical"'), `${path}: no canonical link`);
             expect(html.includes('id="main"'), `${path}: no main landmark for the skip link`);
         }

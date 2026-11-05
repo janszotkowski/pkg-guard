@@ -3,7 +3,7 @@
     "tasks": {
         "build": {
             "dependsOn": ["^build"],
-            "inputs": ["$TURBO_DEFAULT$", ".env*"],
+            "inputs": ["$TURBO_DEFAULT$", ".env*", "$TURBO_ROOT$/docs/**"],
             "env": ["VITE_*"],
             "outputs": ["dist/**", ".output/**"]
         },
@@ -37,6 +37,7 @@
         },
         "test": {
             "dependsOn": ["^build"],
+            "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/docs/**"],
             "passThroughEnv": ["CI"]
         },
         "start": {

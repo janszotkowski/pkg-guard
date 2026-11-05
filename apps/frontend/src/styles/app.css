@@ -1,5 +1,7 @@
 @import 'tailwindcss' source('../');
 @import '@fontsource-variable/inter/index.css';
+@import './highlight.css';
+@import './markdown.css';
 
 /*
  * Design language: taken over from sitehp.app and CVE Tracker. Dark is the identity and is what the

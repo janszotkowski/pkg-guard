@@ -1,8 +1,31 @@
 import { API_URL } from '@config/api';
 import { SITE_URL, canonicalUrl, siteConfig } from '@config/site';
 
-/** Where the API is described until it has an OpenAPI document: the architecture notes name every endpoint. */
-export const API_DOCUMENTATION_URL = `${siteConfig.repository}/blob/main/docs/ARCHITECTURE.md`;
+/** The media type of the API catalog: a linkset with the RFC 9727 profile, which checkers require. */
+export const API_CATALOG_TYPE = 'application/linkset+json; profile="https://www.rfc-editor.org/info/rfc9727"';
+
+/**
+ * `/.well-known/api-catalog` (RFC 9727): the catalog itself, listing the public API as an `item`, then the API with its
+ * OpenAPI description, its documentation and its health check, as a linkset (RFC 9264).
+ */
+export const apiCatalog = (): string =>
+    JSON.stringify({
+        linkset: [
+            {
+                anchor: canonicalUrl('/.well-known/api-catalog'),
+                item: [{ href: `${API_URL}/v1`, type: 'application/json' }],
+            },
+            {
+                anchor: `${API_URL}/v1`,
+                'service-desc': [{ href: `${API_URL}/v1/openapi.json`, type: 'application/openapi+json' }],
+                'service-doc': [
+                    { href: canonicalUrl('/api'), type: 'text/html' },
+                    { href: canonicalUrl('/llms.txt'), type: 'text/plain' },
+                ],
+                status: [{ href: `${API_URL}/v1/health`, type: 'application/json' }],
+            },
+        ],
+    });
 
 /**
  * `/.well-known/ai-catalog.json` (Agentic Resource Discovery, ai-catalog data model): what an agent can use here, the
@@ -20,9 +43,8 @@ export const aiCatalog = (): string => {
                 displayName: `${siteConfig.title} API`,
                 description:
                     'Public read-only JSON API: the measured minified, gzip and brotli size of an npm package, the size of each of its exports, what its bundle is made of, its size across releases, downloads, GitHub stars and what the registry says of a version.',
-                type: 'application/json',
-                url: `${API_URL}/v1/`,
-                documentation: API_DOCUMENTATION_URL,
+                type: 'application/linkset+json',
+                url: canonicalUrl('/.well-known/api-catalog'),
                 representativeQueries: ['measured gzip size of react as JSON', 'size of each release of lodash', 'weekly downloads of vue over the last year', 'is this npm version deprecated'],
             },
             {

@@ -11,6 +11,8 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AboutRouteImport } from './routes/about'
+import { Route as ApiRouteImport } from './routes/api'
+import { Route as McpRouteImport } from './routes/mcp'
 import { Route as TrendsRouteImport } from './routes/trends'
 import { Route as PackageSplatRouteImport } from './routes/package.$'
 
@@ -22,6 +24,16 @@ const IndexRoute = IndexRouteImport.update({
 const AboutRoute = AboutRouteImport.update({
   id: '/about',
   path: '/about',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiRoute = ApiRouteImport.update({
+  id: '/api',
+  path: '/api',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const McpRoute = McpRouteImport.update({
+  id: '/mcp',
+  path: '/mcp',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TrendsRoute = TrendsRouteImport.update({
@@ -38,12 +50,16 @@ const PackageSplatRoute = PackageSplatRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/api': typeof ApiRoute
+  '/mcp': typeof McpRoute
   '/trends': typeof TrendsRoute
   '/package/$': typeof PackageSplatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/api': typeof ApiRoute
+  '/mcp': typeof McpRoute
   '/trends': typeof TrendsRoute
   '/package/$': typeof PackageSplatRoute
 }
@@ -51,20 +67,24 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/api': typeof ApiRoute
+  '/mcp': typeof McpRoute
   '/trends': typeof TrendsRoute
   '/package/$': typeof PackageSplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/about' | '/trends' | '/package/$'
+  fullPaths: '/' | '/about' | '/api' | '/mcp' | '/trends' | '/package/$'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/about' | '/trends' | '/package/$'
-  id: '__root__' | '/' | '/about' | '/trends' | '/package/$'
+  to: '/' | '/about' | '/api' | '/mcp' | '/trends' | '/package/$'
+  id: '__root__' | '/' | '/about' | '/api' | '/mcp' | '/trends' | '/package/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
+  ApiRoute: typeof ApiRoute
+  McpRoute: typeof McpRoute
   TrendsRoute: typeof TrendsRoute
   PackageSplatRoute: typeof PackageSplatRoute
 }
@@ -83,6 +103,20 @@ declare module '@tanstack/react-router' {
       path: '/about'
       fullPath: '/about'
       preLoaderRoute: typeof AboutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api': {
+      id: '/api'
+      path: '/api'
+      fullPath: '/api'
+      preLoaderRoute: typeof ApiRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mcp': {
+      id: '/mcp'
+      path: '/mcp'
+      fullPath: '/mcp'
+      preLoaderRoute: typeof McpRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/trends': {
@@ -105,6 +139,8 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
+  ApiRoute: ApiRoute,
+  McpRoute: McpRoute,
   TrendsRoute: TrendsRoute,
   PackageSplatRoute: PackageSplatRoute,
 }

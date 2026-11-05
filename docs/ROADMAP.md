@@ -23,7 +23,7 @@ These reach people once the API is public, see the [TODO](TODO.md). Until then t
 
 - [ ] **GitHub Action (M)**: a pull request comment such as "this change adds 34 kB", with an optional size limit.
 - [x] **CLI (S–M)**: `pkg-guard react` prints the result in the terminal. Publishing it is in the [TODO](TODO.md).
-- [ ] **MCP server (S)**: an AI agent checks what a dependency costs before adding it. Built on the existing API.
+- [x] **MCP server (S)**: an AI agent checks what a dependency costs before adding it, see [MCP.md](MCP.md).
 
 ## 4. Security and CVE Tracker
 

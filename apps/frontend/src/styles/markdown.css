@@ -1,0 +1,153 @@
+/*
+ * Long-form Markdown rendered by TanStack Markdown (the API reference): its plain elements in the site's type scale and
+ * tokens. Code colors come from highlight.css; here only the surface they sit on.
+ */
+.markdown-doc {
+    font-size: var(--text-callout);
+    line-height: 1.65;
+    overflow-wrap: break-word;
+
+    > * + * {
+        margin-top: 1rem;
+    }
+
+    h1 {
+        font-size: var(--text-title-1);
+        line-height: var(--text-title-1--line-height);
+        letter-spacing: var(--text-title-1--letter-spacing);
+        font-weight: 600;
+        text-wrap: balance;
+    }
+    h2 {
+        margin-top: 3rem;
+        padding-top: 2rem;
+        border-top: 1px solid var(--border);
+        font-size: var(--text-title-2);
+        line-height: var(--text-title-2--line-height);
+        letter-spacing: var(--text-title-2--letter-spacing);
+        font-weight: 600;
+        text-wrap: balance;
+    }
+    h3 {
+        margin-top: 2.5rem;
+        font-size: var(--text-headline);
+        line-height: var(--text-headline--line-height);
+        font-weight: 600;
+    }
+    h3 code {
+        font-size: 1em;
+        background: none;
+        padding: 0;
+    }
+    :is(h1, h2, h3) .anchor-heading {
+        margin-left: 0.4em;
+        color: var(--subtle-foreground);
+        text-decoration: none;
+        opacity: 0;
+    }
+    :is(h1, h2, h3):hover .anchor-heading {
+        opacity: 1;
+    }
+
+    p,
+    li {
+        color: var(--muted-foreground);
+    }
+    strong {
+        color: var(--foreground);
+        font-weight: 600;
+    }
+    a {
+        color: var(--link);
+        text-underline-offset: 2px;
+    }
+    a:hover {
+        text-decoration: underline;
+    }
+    ul,
+    ol {
+        padding-left: 1.25rem;
+    }
+    ul {
+        list-style: disc;
+    }
+    ol {
+        list-style: decimal;
+    }
+    li + li {
+        margin-top: 0.35rem;
+    }
+
+    :not(pre) > code {
+        font-family: var(--font-mono);
+        font-size: 0.875em;
+        color: var(--foreground);
+        background: var(--muted);
+        border-radius: 6px;
+        padding: 0.1em 0.35em;
+    }
+
+    pre.tm-code {
+        font-family: var(--font-mono);
+        font-size: 0.8125rem;
+        line-height: 1.6;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        background: var(--card);
+    }
+    pre.tm-code:focus-visible,
+    .markdown-table:focus-visible {
+        outline: 2px solid var(--ring);
+        outline-offset: 2px;
+    }
+    /* Room for the copy button, so it never covers the end of the first line. */
+    .code-block pre.tm-code {
+        padding-right: 3rem;
+    }
+
+    .markdown-table {
+        overflow-x: auto;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        background: var(--card);
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.875rem;
+        font-variant-numeric: tabular-nums;
+    }
+    th,
+    td {
+        padding: 0.55rem 0.85rem;
+        text-align: left;
+        vertical-align: top;
+        border-bottom: 1px solid var(--border);
+    }
+    tr:last-child td {
+        border-bottom: 0;
+    }
+    th {
+        background: var(--muted);
+        color: var(--subtle-foreground);
+        font-size: 0.75rem;
+        font-weight: 600;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }
+    td {
+        color: var(--muted-foreground);
+    }
+    td:first-child {
+        color: var(--foreground);
+        white-space: nowrap;
+    }
+    td code {
+        white-space: nowrap;
+    }
+
+    em {
+        color: var(--subtle-foreground);
+    }
+}

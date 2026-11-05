@@ -10,6 +10,7 @@
         "paths": {
             "@components/*": ["./src/components/*"],
             "@config/*": ["./src/config/*"],
+            "@docs/*": ["../../docs/*"],
             "@lib/*": ["./src/lib/*"],
             "@routes/*": ["./src/routes/*"],
             "@styles/*": ["./src/styles/*"],

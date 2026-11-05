@@ -10,9 +10,9 @@ import { routeRules } from '../vite/routeRules.ts';
 
 describe('the public pages', () => {
     it('are listed once, the home page first, and only those whose content never depends on the request are prerendered', () => {
-        expect(STATIC_PAGES).toEqual(['/', '/about', '/trends']);
-        expect(PRERENDERED_PAGES).toEqual(['/', '/about']);
-        expect(getTanstackStartPages()).toEqual([{ path: '/' }, { path: '/about' }]);
+        expect(STATIC_PAGES).toEqual(['/', '/about', '/trends', '/api', '/mcp']);
+        expect(PRERENDERED_PAGES).toEqual(['/', '/about', '/api', '/mcp']);
+        expect(getTanstackStartPages()).toEqual([{ path: '/' }, { path: '/about' }, { path: '/api' }, { path: '/mcp' }]);
         expect(new Set(PUBLIC_PAGES.map((page) => page.path)).size).toBe(PUBLIC_PAGES.length);
         expect(publicPage('/about').title).toBe('How it works');
         expect(() => publicPage('/nowhere')).toThrow(/PUBLIC_PAGES/);
