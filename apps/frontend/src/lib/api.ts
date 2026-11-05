@@ -1,7 +1,7 @@
 import {
-    ANALYZER_VERSION,
+    analysisPath,
     analysisResponseSchema,
-    errorResponseSchema,
+    answerOf,
     downloadsResponseSchema,
     historyResponseSchema,
     isComplete,
@@ -10,7 +10,6 @@ import {
     searchResponseSchema,
     starsResponseSchema,
     type AnalysisResponse,
-    type ErrorCode,
     type HistoryResponse,
     type PackageSuggestion,
     type PackagesResponse,
@@ -29,15 +28,7 @@ const HISTORY_POLL_MS = 2000;
 const FAILED_POLL_MS = 5000;
 const MAX_POLL_FAILURES = 6;
 
-export class ApiError extends Error {
-    readonly code: ErrorCode;
-
-    constructor(code: ErrorCode, message: string) {
-        super(message);
-        this.name = 'ApiError';
-        this.code = code;
-    }
-}
+export { ApiError } from '@pkg-guard/core';
 
 /**
  * One request to the API: from the browser at its public address, from the server at its internal one, saying whom the
@@ -75,22 +66,8 @@ export const pollInterval = (query: { state: PollState }, normal: number | false
     return failures > 0 || query.state.status === 'error' ? FAILED_POLL_MS : normal;
 };
 
-/** The API's own error when it sent one, else what little the status says: a proxy's error page is not JSON. */
-const apiError = async (response: Response): Promise<ApiError> => {
-    const failure = errorResponseSchema.safeParse(await response.json().catch(() => undefined));
-    return failure.success ? new ApiError(failure.data.error.code, failure.data.error.message) : new ApiError('INTERNAL', `The API answered ${response.status}`);
-};
-
-/** The answer as the contract has it, or the API's error. */
-const answerOf = async <T>(response: Response, schema: { parse: (value: unknown) => T }): Promise<T> => {
-    if (!response.ok) throw await apiError(response);
-    return schema.parse(await response.json());
-};
-
-// A finished answer may be kept for a day, by the browser or a CDN. The analyzer version in the address keeps an answer
-// measured the old way from being served, unread by the API, after the way of measuring changes.
-export const fetchAnalysis = async (spec: string, signal?: AbortSignal): Promise<AnalysisResponse> =>
-    answerOf(await api(`/v1/analyses?package=${encodeURIComponent(spec)}&analyzer=${ANALYZER_VERSION}`, { signal }), analysisResponseSchema);
+// A finished answer may be kept for a day, by the browser or a CDN.
+export const fetchAnalysis = async (spec: string, signal?: AbortSignal): Promise<AnalysisResponse> => answerOf(await api(analysisPath(spec), { signal }), analysisResponseSchema);
 
 /**
  * One package's analysis, asked for again while it is waiting or running. Once the first answer has named the exact
@@ -166,7 +143,7 @@ export const metadataQuery = (name: string, version: string) =>
 
 /** A package only if it has been measured: what documents for crawlers read, so that they never cause a download. Undefined when it has not. */
 export const fetchKnownAnalysis = async (spec: string): Promise<AnalysisResponse | undefined> => {
-    const response = await api(`/v1/analyses?package=${encodeURIComponent(spec)}&known=1&analyzer=${ANALYZER_VERSION}`);
+    const response = await api(analysisPath(spec, true));
     if (response.status === 404) return undefined;
     return answerOf(response, analysisResponseSchema);
 };

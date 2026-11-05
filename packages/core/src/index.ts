@@ -1,3 +1,4 @@
+export * from './client/api.ts';
 export * from './contract/analysis.ts';
 export * from './contract/errors.ts';
 export * from './contract/history.ts';
@@ -5,3 +6,4 @@ export * from './contract/metadata.ts';
 export * from './contract/package-spec.ts';
 export * from './contract/search.ts';
 export * from './contract/trends.ts';
+export * from './format.ts';
