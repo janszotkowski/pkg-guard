@@ -2,7 +2,7 @@ import { MIN_SEARCH_LENGTH, parseSpec, type PackageSuggestion } from '@pkg-guard
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate, useRouter } from '@tanstack/react-router';
 import { Search } from 'lucide-react';
-import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
+import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent, type RefObject } from 'react';
 import { Button } from '@components/ui/button';
 import { Input } from '@components/ui/input';
 import { searchQuery } from '@lib/api';
@@ -51,6 +51,8 @@ type PackageSearchProps = {
     onPick?: (spec: string) => void;
     /** Not the page's main search: ⌘K belongs to the one in the header. */
     secondary?: boolean;
+    /** The field itself, for a parent that has to put the keyboard back in it. */
+    fieldRef?: RefObject<HTMLInputElement | null>;
 };
 
 /**
@@ -65,7 +67,9 @@ export const PackageSearch = (props: PackageSearchProps) => {
     const fieldId = useId();
     const errorId = useId();
     const listId = useId();
-    const field = useRef<HTMLInputElement>(null);
+    const own = useRef<HTMLInputElement | null>(null);
+    // A parent that has to put the keyboard back in the field lends its own ref; the field is otherwise this component's business.
+    const field = props.fieldRef ?? own;
     const [value, setValue] = useState('');
     const [invalid, setInvalid] = useState(false);
     const [open, setOpen] = useState(false);
@@ -74,6 +78,12 @@ export const PackageSearch = (props: PackageSearchProps) => {
     const text = value.trim();
     const settled = useDebouncedValue(text, DEBOUNCE_MS);
     const { data } = useQuery({ ...searchQuery(settled), enabled: open && isSearchable(settled) });
+    // A later answer may be shorter than the one it replaces, and what was picked in the old list means nothing in the new.
+    const [seenData, setSeenData] = useState(data);
+    if (data !== seenData) {
+        setSeenData(data);
+        setActiveIndex(-1);
+    }
     const suggestions = isSearchable(text) ? (data ?? []) : [];
     const showList = open && suggestions.length > 0;
     const active = showList ? suggestions[activeIndex] : undefined;
@@ -99,7 +109,7 @@ export const PackageSearch = (props: PackageSearchProps) => {
         };
         window.addEventListener('keydown', onKeyDown);
         return () => window.removeEventListener('keydown', onKeyDown);
-    }, [props.secondary]);
+    }, [props.secondary, field]);
 
     const lookUp = (spec: string) => {
         setInvalid(false);

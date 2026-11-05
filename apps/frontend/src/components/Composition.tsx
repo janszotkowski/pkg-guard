@@ -1,13 +1,11 @@
 import type { AnalysisResult } from '@pkg-guard/core';
 import { Link } from '@tanstack/react-router';
 import { formatSizeText } from '@lib/format';
+import { HEADER_CELL, NUMBER_CELL, TEXT_CELL } from '@lib/tableClasses';
 
 const formatShare = (share: number): string => (share < 0.01 ? '<1%' : `${Math.round(share * 100)}%`);
 
 const moduleCount = (count: number): string => `${count} ${count === 1 ? 'file' : 'files'}`;
-
-const HEADER_CELL = 'px-3 py-2 text-caption font-medium text-muted-foreground first:pl-0 last:pr-0';
-const NUMBER_CELL = 'px-3 py-2.5 text-right tabular-nums whitespace-nowrap last:pr-0';
 
 type CompositionProps = {
     composition: AnalysisResult['composition'];
@@ -25,7 +23,14 @@ export const Composition = (props: CompositionProps) => {
     return (
         <div className={'flex flex-col gap-4'}>
             <p className={'max-w-2xl text-callout text-muted-foreground'}>The packages inside the bundle. Sizes are estimated from each package&apos;s share of it.</p>
-            <div className={'overflow-x-auto'}>
+            {/* A named region the keyboard can reach: on a narrow screen the table scrolls sideways, and the arrow keys scroll it. */}
+            {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex */}
+            <div
+                role={'region'}
+                aria-label={'Packages in the bundle'}
+                tabIndex={0}
+                className={'overflow-x-auto'}
+            >
                 <table className={'w-full text-left text-callout'}>
                     <caption className={'sr-only'}>The packages in the bundle, largest first</caption>
                     <thead>
@@ -62,7 +67,7 @@ export const Composition = (props: CompositionProps) => {
                                 key={part.name}
                                 className={'border-b last:border-0'}
                             >
-                                <td className={'py-2.5 pr-3 font-mono text-code break-all'}>
+                                <td className={`${TEXT_CELL} font-mono text-code break-all`}>
                                     {part.name === props.packageName ? (
                                         <>
                                             {part.name}
@@ -78,17 +83,17 @@ export const Composition = (props: CompositionProps) => {
                                         </Link>
                                     )}
                                 </td>
-                                <td className={'hidden px-3 py-2.5 whitespace-nowrap text-muted-foreground sm:table-cell'}>{moduleCount(part.modules)}</td>
+                                <td className={`${TEXT_CELL} hidden whitespace-nowrap text-muted-foreground sm:table-cell`}>{moduleCount(part.modules)}</td>
                                 <td className={`${NUMBER_CELL} font-semibold`}>{formatShare(part.share)}</td>
                                 <td className={`${NUMBER_CELL} text-muted-foreground`}>{formatSizeText(Math.round(part.share * props.minified))}</td>
                             </tr>
                         ))}
                         {hidden > 0 && (
                             <tr>
-                                <td className={'py-2.5 pr-3 text-muted-foreground'}>
+                                <td className={`${TEXT_CELL} text-muted-foreground`}>
                                     {hidden} more {hidden === 1 ? 'package' : 'packages'}
                                 </td>
-                                <td className={'hidden px-3 py-2.5 text-muted-foreground sm:table-cell'}>—</td>
+                                <td className={`${TEXT_CELL} hidden text-muted-foreground sm:table-cell`}>—</td>
                                 <td className={`${NUMBER_CELL} font-semibold`}>{formatShare(hiddenShare)}</td>
                                 <td className={`${NUMBER_CELL} text-muted-foreground`}>{formatSizeText(Math.round(hiddenShare * props.minified))}</td>
                             </tr>

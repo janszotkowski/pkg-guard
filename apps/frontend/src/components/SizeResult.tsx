@@ -1,6 +1,7 @@
 import type { AnalysisResult } from '@pkg-guard/core';
 import { Link } from '@tanstack/react-router';
 import { FigureBand } from '@components/FigureBand';
+import { Notice } from '@components/Notice';
 import { formatDownloadTimes, formatSize, formatSizeText } from '@lib/format';
 
 const MAX_BUILTINS_NAMED = 5;
@@ -42,14 +43,11 @@ const NothingToImport = (props: NothingToImportProps) => {
                 </p>
                 <p className={'text-callout text-muted-foreground'}>On disk, {install.packages === 1 ? 'with no dependencies' : `with its dependencies: ${install.packages} packages`}.</p>
             </div>
-            <p
-                role={'note'}
-                className={'max-w-3xl border-l-2 border-ring pl-4 text-callout text-muted-foreground'}
-            >
+            <Notice>
                 {commands.length > 0
                     ? `This is a command-line tool, run as ${commands.join(', ')}. It has nothing to import, so it adds nothing to your bundle.`
                     : 'This package has no entry that can be imported, so there is no bundle to measure.'}
-            </p>
+            </Notice>
         </div>
     );
 };
@@ -86,14 +84,7 @@ export const SizeResult = (props: SizeResultProps) => {
                     </p>
                 )}
             </div>
-            {note !== undefined && (
-                <p
-                    role={'note'}
-                    className={'max-w-3xl border-l-2 border-ring pl-4 text-callout text-muted-foreground'}
-                >
-                    {note}
-                </p>
-            )}
+            {note !== undefined && <Notice>{note}</Notice>}
             <FigureBand
                 items={[
                     { label: 'Minified', value: formatSizeText(sizes.minified), hint: 'before compression' },

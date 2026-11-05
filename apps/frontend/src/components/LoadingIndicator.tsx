@@ -33,6 +33,7 @@ export const LoadingIndicator = () => {
                 >
                     <span>This is taking longer than usual.</span>
                     <Button
+                        size={'sm'}
                         variant={'secondary'}
                         onClick={() => void router.invalidate()}
                     >

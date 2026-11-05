@@ -1,5 +1,5 @@
 import type { ExportDetails, ExportsState } from '@pkg-guard/core';
-import { useMemo, useState } from 'react';
+import { useId, useMemo, useState } from 'react';
 import { Button } from '@components/ui/button';
 import { Input } from '@components/ui/input';
 import { formatSizeText } from '@lib/format';
@@ -39,6 +39,7 @@ const missingNote = (shown: number, failed: number, total: number): string | und
 type NamedExportsProps = { details: ExportDetails };
 
 const NamedExports = (props: NamedExportsProps) => {
+    const filterId = useId();
     const [filter, setFilter] = useState('');
     const [expanded, setExpanded] = useState(false);
     const needle = filter.trim().toLowerCase();
@@ -55,13 +56,13 @@ const NamedExports = (props: NamedExportsProps) => {
             {props.details.named.length > COLLAPSED && (
                 <>
                     <label
-                        htmlFor={'export-filter'}
+                        htmlFor={filterId}
                         className={'sr-only'}
                     >
                         Filter exports by name
                     </label>
                     <Input
-                        id={'export-filter'}
+                        id={filterId}
                         value={filter}
                         onChange={(event) => setFilter(event.target.value)}
                         placeholder={'Filter by name'}

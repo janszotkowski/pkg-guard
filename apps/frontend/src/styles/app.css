@@ -36,6 +36,7 @@
     --color-input: var(--input);
     --color-ring: var(--ring);
     --color-link: var(--link);
+    --color-warning: var(--warning);
     --color-bar: var(--bar);
 
     /* Shape: generously rounded. xs chips · sm inputs · md buttons/rows · lg cards · xl sheets · 4xl pills. */
@@ -108,6 +109,8 @@
     --accent: #f2f2f6;
     --accent-foreground: #17171a;
     --destructive: #b3281f;
+    /* Asks for care without alarm: the amber of the family's score palette (sitehp `--score-fair`), readable as text and as a rule. */
+    --warning: #7f6200;
     --border: rgb(0 0 0 / 8%);
     /* The edge of a form control must reach 3:1 against the page (WCAG 1.4.11), so it is an opaque gray, not a faint hairline. */
     --input: #8a8a94;
@@ -117,11 +120,11 @@
     --bar: #0c6e42;
     /* The top of the fade under a chart's line. The same color needs more of itself to show on a black page. */
     --trend-fill: 32%;
-    /* Package colors of the trends chart: in this order they pass the dataviz validator in each theme. */
+    /* Package colors of the trends chart: four hues apart from each other, each at least 3:1 against the page (WCAG 1.4.11), as tests/design/contrast.test.ts checks. */
     --series-1: #2a78d6;
-    --series-2: #eb6834;
-    --series-3: #1baf7a;
-    --series-4: #eda100;
+    --series-2: #d9521f;
+    --series-3: #0f8a5e;
+    --series-4: #b07400;
 
     /* Glass: structure floating above content. */
     --glass-bg: rgb(255 255 255 / 60%);
@@ -160,6 +163,7 @@
     --accent: #1c1c22;
     --accent-foreground: #f5f5f7;
     --destructive: #ff6b63;
+    --warning: #f2d14b;
     --border: rgb(255 255 255 / 8%);
     --input: #6b6b75;
     --ring: #3dd68c;
@@ -239,17 +243,14 @@
     box-shadow: var(--glass-shadow);
 }
 
-/* Text on glass: higher contrast, one step heavier, a small tracking bump (vibrancy). Color belongs on a solid layer, not on the translucent foreground. */
-@utility vibrancy {
-    font-weight: 500;
-    letter-spacing: 0.005em;
-    color: var(--foreground);
-}
-
-/* Scroll edge effect instead of a hard divider where content slides under floating chrome. */
-@utility scroll-edge-top {
-    mask-image: linear-gradient(to bottom, transparent, #000 1.5rem);
-    -webkit-mask-image: linear-gradient(to bottom, transparent, #000 1.5rem);
+/* The glow of the main action: a ring and a halo of the page's accent on hover, so the one thing to do stands out. */
+@utility cta-glow {
+    transition: box-shadow 250ms var(--ease-standard);
+    &:hover {
+        box-shadow:
+            0 0 0 1px color-mix(in oklch, var(--glow-color) 60%, transparent),
+            0 0 24px -4px color-mix(in oklch, var(--glow-color) 55%, transparent);
+    }
 }
 
 @media (prefers-reduced-transparency: reduce) {
@@ -272,9 +273,9 @@
     }
 }
 
-/* Reduced motion keeps comprehension (color and opacity) and drops slides, springs and sweeps. The delayed hint is only an opacity change, and dropping it would show it at once. */
+/* Reduced motion keeps comprehension (color and opacity) and drops slides, springs and sweeps. */
 @media (prefers-reduced-motion: reduce) {
-    *:not(.delayed-hint),
+    *,
     ::before,
     ::after {
         animation: none !important;
@@ -284,10 +285,7 @@
     }
 }
 
-/*
- * Loading: an indeterminate bar under the header, and a veil that sweeps over content being replaced. Both only appear
- * after a short delay so a fast answer shows nothing at all. With reduced motion they pulse instead.
- */
+/* Loading: an indeterminate bar under the header. It only appears after a short delay so a fast answer shows nothing at all. With reduced motion it pulses instead. */
 .loading-bar::before {
     content: '';
     position: absolute;
@@ -302,29 +300,6 @@
     }
     to {
         transform: translateX(250%);
-    }
-}
-
-.loading-veil {
-    position: relative;
-}
-
-.loading-veil::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    background: linear-gradient(100deg, transparent 20%, color-mix(in oklch, var(--foreground) 6%, transparent) 50%, transparent 80%);
-    background-size: 200% 100%;
-    animation: loading-sweep 1.4s linear infinite;
-}
-
-@keyframes loading-sweep {
-    from {
-        background-position: 150% 0;
-    }
-    to {
-        background-position: -50% 0;
     }
 }
 
@@ -348,10 +323,6 @@
     .loading-bar::before {
         width: 100%;
         animation: skeleton-pulse 1.2s var(--ease-standard) infinite alternate !important;
-    }
-    .loading-veil::after {
-        animation: none !important;
-        background: color-mix(in oklch, var(--background) 30%, transparent);
     }
 }
 

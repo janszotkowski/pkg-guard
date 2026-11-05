@@ -1,11 +1,14 @@
 import { useRef, type KeyboardEvent } from 'react';
 import { cn } from '@lib/utils';
 
+type Option<Value extends string> = { value: Value; label: string; count?: number };
+
 type SegmentedControlProps<Value extends string> = {
     label: string;
     value: Value;
-    options: readonly { value: Value; label: string }[];
+    options: readonly Option<Value>[];
     onChange: (value: Value) => void;
+    className?: string;
 };
 
 /** Which option a key moves to, by the ARIA radio group pattern; undefined for any other key. */
@@ -27,8 +30,9 @@ export const segmentStep = (key: string, index: number, count: number): number |
 };
 
 /**
- * One choice out of a few, as a row of pills: a radio group to assistive technology and to the keyboard. The group is one
- * stop of the Tab key; the arrow keys, Home and End move the choice, which applies at once.
+ * One choice out of a few, as a row of pills: a radio group to assistive technology, and to the keyboard too. The
+ * group is one stop of the Tab key (the chosen option); the arrow keys, Home and End move the choice, which applies at once.
+ * Each option is a 44 px touch target and may carry a count.
  */
 export const SegmentedControl = <Value extends string>(props: SegmentedControlProps<Value>) => {
     const buttons = useRef<(HTMLButtonElement | null)[]>([]);
@@ -50,7 +54,7 @@ export const SegmentedControl = <Value extends string>(props: SegmentedControlPr
         <div
             role={'radiogroup'}
             aria-label={props.label}
-            className={'inline-flex rounded-4xl bg-muted p-1'}
+            className={cn('inline-flex rounded-4xl bg-muted p-1', props.className)}
         >
             {props.options.map((option, index) => {
                 const checked = index === selected;
@@ -67,11 +71,14 @@ export const SegmentedControl = <Value extends string>(props: SegmentedControlPr
                         onClick={() => props.onChange(option.value)}
                         onKeyDown={onKeyDown}
                         className={cn(
-                            'min-h-9 rounded-4xl px-3.5 text-caption whitespace-nowrap transition-colors duration-100',
-                            checked ? 'bg-card text-foreground shadow-sm dark:bg-foreground/15' : 'text-muted-foreground hover:text-foreground',
+                            'inline-flex min-h-11 items-center gap-1.5 rounded-4xl px-4 text-caption whitespace-nowrap transition-colors duration-100',
+                            checked
+                                ? 'bg-card text-foreground shadow-sm forced-colors:outline-2 forced-colors:outline-offset-[-2px] forced-colors:outline-[Highlight] dark:bg-secondary dark:ring-1 dark:ring-border'
+                                : 'text-muted-foreground hover:text-foreground',
                         )}
                     >
                         {option.label}
+                        {option.count !== undefined && <span className={cn('tabular-nums', checked ? 'opacity-70' : 'text-subtle-foreground')}>{option.count}</span>}
                     </button>
                 );
             })}

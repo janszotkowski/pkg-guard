@@ -3,7 +3,9 @@ import { createColumnHelper, createSortedRowModel, rowSortingFeature, sortFn_alp
 import { ArrowDown, ArrowUp, ArrowUpDown, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { npmUrl } from '@components/PackageLinks';
+import { Button } from '@components/ui/button';
 import { formatCount, formatSizeText } from '@lib/format';
+import { HEADER_CELL, NUMERIC, TEXT_CELL } from '@lib/tableClasses';
 import { cn } from '@lib/utils';
 
 export type TrendsTableRow = {
@@ -29,8 +31,6 @@ const features = tableFeatures({
 
 const helper = createColumnHelper<typeof features, TrendsTableRow>();
 
-const NUMERIC = 'text-right tabular-nums whitespace-nowrap';
-
 const COLUMN_CLASS: Record<string, string> = {
     name: 'w-full min-w-48',
     gzip: NUMERIC,
@@ -38,7 +38,7 @@ const COLUMN_CLASS: Record<string, string> = {
     install: `${NUMERIC} hidden sm:table-cell`,
     weekly: `${NUMERIC} hidden md:table-cell`,
     stars: `${NUMERIC} hidden md:table-cell`,
-    remove: 'w-10',
+    remove: 'w-14',
 };
 
 const orDash = (value: number | undefined, format: (value: number) => string): string => (value === undefined ? '—' : format(value));
@@ -112,17 +112,18 @@ const buildColumns = (onRemove: (name: string) => void) =>
             id: 'remove',
             header: () => <span className={'sr-only'}>Remove</span>,
             cell: (info) => (
-                <button
-                    type={'button'}
+                <Button
+                    variant={'ghost'}
+                    size={'icon-sm'}
                     aria-label={`Remove ${info.row.original.name}`}
                     onClick={() => onRemove(info.row.original.name)}
-                    className={'inline-flex size-8 items-center justify-center rounded-md text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring'}
+                    className={'text-muted-foreground hover:text-foreground'}
                 >
                     <X
                         aria-hidden={'true'}
                         className={'size-4'}
                     />
-                </button>
+                </Button>
             ),
         }),
     ]);
@@ -146,7 +147,14 @@ export const TrendsTable = (props: TrendsTableProps) => {
     });
 
     return (
-        <div className={'overflow-x-auto'}>
+        // A named region the keyboard can reach: on a narrow screen the table scrolls sideways, and the arrow keys scroll it.
+        // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex
+        <div
+            role={'region'}
+            aria-label={'Compared packages'}
+            tabIndex={0}
+            className={'overflow-x-auto'}
+        >
             <table className={'w-full text-left text-callout'}>
                 <caption className={'sr-only'}>The compared packages and their current numbers</caption>
                 <thead>
@@ -163,7 +171,7 @@ export const TrendsTable = (props: TrendsTableProps) => {
                                         key={header.id}
                                         scope={'col'}
                                         aria-sort={sorted === 'asc' ? 'ascending' : sorted === 'desc' ? 'descending' : undefined}
-                                        className={cn('px-3 py-2 text-caption font-medium text-muted-foreground first:pl-0', COLUMN_CLASS[header.column.id])}
+                                        className={cn(HEADER_CELL, COLUMN_CLASS[header.column.id])}
                                     >
                                         {header.column.getCanSort() ? (
                                             <button
@@ -197,7 +205,7 @@ export const TrendsTable = (props: TrendsTableProps) => {
                                 // oxlint-disable-next-line jsx-a11y/control-has-associated-label
                                 <td
                                     key={cell.id}
-                                    className={cn('px-3 py-3 first:pl-0', COLUMN_CLASS[cell.column.id])}
+                                    className={cn(TEXT_CELL, COLUMN_CLASS[cell.column.id])}
                                 >
                                     <table.FlexRender cell={cell} />
                                 </td>

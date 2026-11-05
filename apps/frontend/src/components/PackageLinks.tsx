@@ -20,7 +20,8 @@ const OutLink = (props: OutLinkProps) => (
     </a>
 );
 
-export const npmUrl = (ref: PackageRef): string => `https://www.npmjs.com/package/${ref.name}/v/${encodeURIComponent(ref.version)}`;
+/** A scoped name has a slash that is part of the path: each segment is encoded on its own. */
+export const npmUrl = (ref: PackageRef): string => `https://www.npmjs.com/package/${ref.name.split('/').map(encodeURIComponent).join('/')}/v/${encodeURIComponent(ref.version)}`;
 
 type PackageLinksProps = {
     package: PackageRef;

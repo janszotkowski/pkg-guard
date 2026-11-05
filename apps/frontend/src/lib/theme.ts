@@ -1,7 +1,8 @@
 /** Browser color of the surrounding chrome per theme (matches `--background`). */
 export const THEME_COLOR = { dark: '#000000', light: '#fbfbfd' } as const;
 
-const THEME_STORAGE_KEY = 'pkg-guard-theme';
+/** One key for the whole family of sites, so a visitor's choice carries over from one to the next. */
+const THEME_STORAGE_KEY = 'theme';
 
 /**
  * Runs before first paint. The site is dark by default; only a visitor who switched to light (stored by `setTheme`) gets

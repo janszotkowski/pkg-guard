@@ -1,5 +1,6 @@
 import type { AnalysisResult, HistoryResponse, PackageMetadata, PackageRef } from '@pkg-guard/core';
 import { useQuery } from '@tanstack/react-query';
+import { Notice } from '@components/Notice';
 import { historyQuery, metadataQuery } from '@lib/api';
 import { dayLabel } from '@lib/trends';
 
@@ -7,9 +8,18 @@ type Fact = { label: string; value: string; hint: string };
 
 const WAITING = '…';
 
-const typesFact = (metadata: PackageMetadata | undefined): Fact => {
+/** What a fact says when what it rests on could not be read: the other facts still stand. */
+const unavailable = (label: string): Fact => ({ label, value: '—', hint: 'could not be loaded' });
+
+const licenseFact = (metadata: PackageMetadata | undefined, failed: boolean): Fact => {
+    const label = 'License';
+    if (metadata === undefined) return failed ? unavailable(label) : { label, value: WAITING, hint: '' };
+    return { label, value: metadata.license ?? 'Not stated', hint: 'as the package states it' };
+};
+
+const typesFact = (metadata: PackageMetadata | undefined, failed: boolean): Fact => {
     const label = 'TypeScript types';
-    if (metadata === undefined) return { label, value: WAITING, hint: '' };
+    if (metadata === undefined) return failed ? unavailable(label) : { label, value: WAITING, hint: '' };
     if (metadata.types === 'included') return { label, value: 'Included', hint: 'declared by the package' };
     if (metadata.typesPackage !== null) return { label, value: 'Separate', hint: `in ${metadata.typesPackage}` };
     return { label, value: 'None declared', hint: 'and no @types package' };
@@ -33,26 +43,22 @@ const releaseFact = (history: HistoryResponse | undefined, failed: boolean): Fac
     return { label, value: dayLabel(Date.parse(latest.publishedAt)), hint: `latest is ${latest.version}` };
 };
 
-const scriptsFact = (metadata: PackageMetadata | undefined): Fact => {
+const scriptsFact = (metadata: PackageMetadata | undefined, failed: boolean): Fact => {
     const label = 'Install scripts';
-    if (metadata === undefined) return { label, value: WAITING, hint: '' };
+    if (metadata === undefined) return failed ? unavailable(label) : { label, value: WAITING, hint: '' };
     return { label, value: metadata.installScripts.length === 0 ? 'None' : metadata.installScripts.join(', '), hint: 'of this package, not its dependencies' };
 };
 
 type PackageHealthProps = { package: PackageRef; entry: AnalysisResult['entry'] };
 
-/** What to know about a package beside its size. It says what npm says and passes no judgement; without an answer it is left out. */
+/**
+ * What to know about a package beside its size. It says what npm says and passes no judgement. A fact whose source could
+ * not be read says so, and the others stand: the module format and the last release owe nothing to the metadata.
+ */
 export const PackageHealth = (props: PackageHealthProps) => {
     const { data, isError, isPending } = useQuery(metadataQuery(props.package.name, props.package.version));
     const history = useQuery(historyQuery(props.package.name));
-    if (isError) return null;
-    const facts: Fact[] = [
-        { label: 'Licence', value: data === undefined ? WAITING : (data.license ?? 'Not stated'), hint: data === undefined ? '' : 'as the package states it' },
-        typesFact(data),
-        ...formatFact(props.entry),
-        releaseFact(history.data, history.isError),
-        scriptsFact(data),
-    ];
+    const facts: Fact[] = [licenseFact(data, isError), typesFact(data, isError), ...formatFact(props.entry), releaseFact(history.data, history.isError), scriptsFact(data, isError)];
     return (
         <section
             aria-labelledby={'package-health'}
@@ -65,12 +71,9 @@ export const PackageHealth = (props: PackageHealthProps) => {
                 Package health
             </h2>
             {data !== undefined && data.deprecated !== null && (
-                <p
-                    role={'note'}
-                    className={'max-w-3xl border-l-2 border-destructive pl-4 text-callout break-words'}
-                >
+                <Notice tone={'danger'}>
                     <span className={'font-semibold text-destructive'}>Deprecated:</span> {data.deprecated}
-                </p>
+                </Notice>
             )}
             <dl
                 aria-busy={isPending}
