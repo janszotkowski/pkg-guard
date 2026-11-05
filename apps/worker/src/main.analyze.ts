@@ -20,7 +20,7 @@ process.once('message', (message) => {
                 await send({ kind: 'exports-failure' });
             }
         } catch (error) {
-            await send({ kind: 'failure', failure: toFailure(error, request.options.dir) });
+            await send({ kind: 'failure', failure: toFailure(error, [request.options.dir, request.options.storeDir]) });
         }
         process.exit(0);
     })();

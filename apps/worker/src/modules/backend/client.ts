@@ -1,7 +1,14 @@
+import { setTimeout as sleep } from 'node:timers/promises';
 import { claimResponseSchema, isExactVersion, isValidPackageName, type AnalysisFailure, type AnalysisResult, type ExportDetails, type Job } from '@pkg-guard/core';
+import { z } from 'zod';
 import type { Config } from '@config/env.ts';
 
 const TIMEOUT_MS = 10_000;
+/** A result that took a minute to make is worth a few tries: the backend may be restarting. */
+const HAND_IN_ATTEMPTS = 3;
+const HAND_IN_RETRY_MS = 1000;
+
+const acceptedSchema = z.object({ accepted: z.boolean() });
 
 /** The worker's only way to the data: it holds no database of its own. */
 export const createBackendClient = (config: Pick<Config, 'BACKEND_URL' | 'WORKER_TOKEN'>) => {
@@ -16,6 +23,18 @@ export const createBackendClient = (config: Pick<Config, 'BACKEND_URL' | 'WORKER
         return response.json();
     };
 
+    /** Hands something in, trying again when the backend does not take it. False when it did take it but too late: the job's lease had run out. */
+    const handIn = async (path: string, body?: unknown): Promise<boolean> => {
+        for (let attempt = 1; ; attempt++) {
+            try {
+                return acceptedSchema.parse(await post(path, body)).accepted;
+            } catch (error) {
+                if (attempt >= HAND_IN_ATTEMPTS) throw error;
+                await sleep(HAND_IN_RETRY_MS * attempt);
+            }
+        }
+    };
+
     return {
         claim: async (): Promise<Job | undefined> => {
             const { job } = claimResponseSchema.parse(await post('/internal/jobs/claim'));
@@ -24,18 +43,10 @@ export const createBackendClient = (config: Pick<Config, 'BACKEND_URL' | 'WORKER
             if (!isValidPackageName(job.package.name) || !isExactVersion(job.package.version)) throw new Error(`The backend sent an invalid package (job ${job.id})`);
             return job;
         },
-        complete: async (id: number, result: AnalysisResult): Promise<void> => {
-            await post(`/internal/jobs/${id}/result`, result);
-        },
-        fail: async (id: number, failure: AnalysisFailure): Promise<void> => {
-            await post(`/internal/jobs/${id}/failure`, failure);
-        },
-        completeExports: async (id: number, details: ExportDetails): Promise<void> => {
-            await post(`/internal/jobs/${id}/exports`, details);
-        },
-        failExports: async (id: number): Promise<void> => {
-            await post(`/internal/jobs/${id}/exports-failure`);
-        },
+        complete: (id: number, result: AnalysisResult): Promise<boolean> => handIn(`/internal/jobs/${id}/result`, result),
+        fail: (id: number, failure: AnalysisFailure): Promise<boolean> => handIn(`/internal/jobs/${id}/failure`, failure),
+        completeExports: (id: number, details: ExportDetails): Promise<boolean> => handIn(`/internal/jobs/${id}/exports`, details),
+        failExports: (id: number): Promise<boolean> => handIn(`/internal/jobs/${id}/exports-failure`),
     };
 };
 

@@ -28,7 +28,7 @@ const analysisEnv = (): NodeJS.ProcessEnv => {
  */
 export const runAnalysis = async (
     ref: PackageRef,
-    config: Pick<Config, 'WORKER_DIR' | 'JOB_TIMEOUT_MS' | 'MAX_INSTALL_BYTES' | 'PARTS_BUDGET_MS'>,
+    config: Pick<Config, 'WORKER_DIR' | 'JOB_TIMEOUT_MS' | 'JOB_MEMORY_MB' | 'MAX_INSTALL_BYTES' | 'PARTS_BUDGET_MS'>,
     onMessage: (message: AnalyzeMessage) => Promise<void>,
 ): Promise<void> => {
     const dir = join(config.WORKER_DIR, 'jobs', randomUUID());
@@ -47,7 +47,7 @@ export const runAnalysis = async (
 
     try {
         await new Promise<void>((resolve) => {
-            const child = fork(new URL('./main.analyze.mjs', import.meta.url), { env: analysisEnv(), detached: true, execArgv: ['--max-old-space-size=2048'] });
+            const child = fork(new URL('./main.analyze.mjs', import.meta.url), { env: analysisEnv(), detached: true, execArgv: [`--max-old-space-size=${config.JOB_MEMORY_MB}`] });
             let timedOut = false;
             const end = (reason: string): void => {
                 clearTimeout(timer);

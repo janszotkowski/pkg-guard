@@ -44,24 +44,38 @@ export const installPackage = async (ref: PackageRef, dir: string, storeDir: str
     }
 };
 
-/** What the install put on disk, walked without following links. */
+/** Every file under `folder`, without following links. `onFile` may throw to stop the walk. */
+const walkFiles = async (folder: string, onFile: (path: string, name: string, bytes: number) => void): Promise<void> => {
+    for (const entry of await readdir(folder, { withFileTypes: true })) {
+        const path = join(folder, entry.name);
+        if (entry.isDirectory()) await walkFiles(path, onFile);
+        else if (entry.isFile()) onFile(path, entry.name, (await lstat(path)).size);
+    }
+};
+
+/** What the install put on disk. */
 export const measureInstall = async (dir: string, maxBytes: number): Promise<{ bytes: number; packages: number }> => {
     let bytes = 0;
     let packages = 0;
-    const walk = async (folder: string): Promise<void> => {
-        for (const entry of await readdir(folder, { withFileTypes: true })) {
-            const path = join(folder, entry.name);
-            if (entry.isDirectory()) {
-                await walk(path);
-            } else if (entry.isFile()) {
-                bytes += (await lstat(path)).size;
-                if (bytes > maxBytes) throw new AnalysisError('TOO_LARGE', `The package and its dependencies take more than ${maxBytes} bytes`);
-                const owner = dirname(path);
-                const parent = basename(dirname(owner));
-                if (entry.name === 'package.json' && (parent === 'node_modules' || (parent.startsWith('@') && basename(dirname(dirname(owner))) === 'node_modules'))) packages++;
-            }
-        }
-    };
-    await walk(join(dir, 'node_modules'));
+    await walkFiles(join(dir, 'node_modules'), (path, name, size) => {
+        bytes += size;
+        if (bytes > maxBytes) throw new AnalysisError('TOO_LARGE', `The package and its dependencies take more than ${maxBytes} bytes`);
+        const owner = dirname(path);
+        const parent = basename(dirname(owner));
+        if (name === 'package.json' && (parent === 'node_modules' || (parent.startsWith('@') && basename(dirname(dirname(owner))) === 'node_modules'))) packages++;
+    });
     return { bytes, packages };
+};
+
+/** What a folder takes on disk; nothing for one that is not there. */
+export const folderBytes = async (folder: string): Promise<number> => {
+    let bytes = 0;
+    try {
+        await walkFiles(folder, (_path, _name, size) => {
+            bytes += size;
+        });
+    } catch (error) {
+        if ((error as { code?: unknown }).code !== 'ENOENT') throw error;
+    }
+    return bytes;
 };

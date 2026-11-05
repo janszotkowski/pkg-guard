@@ -90,14 +90,20 @@ describe('peerNames', () => {
 
 describe('toFailure', () => {
     it('removes local paths and keeps the code', () => {
-        expect(toFailure(new AnalysisError('BUNDLE_FAILED', 'cannot read /work/job/x.js'), '/work/job')).toEqual({ code: 'BUNDLE_FAILED', message: 'cannot read x.js' });
+        expect(toFailure(new AnalysisError('BUNDLE_FAILED', 'cannot read /work/job/x.js'), ['/work/job'])).toEqual({ code: 'BUNDLE_FAILED', message: 'cannot read x.js' });
     });
 
     it('removes terminal colors and the real form of a linked folder', () => {
-        expect(toFailure(new AnalysisError('BUNDLE_FAILED', '\u001b[31mcannot load\u001b[0m /private/var/job/node_modules/x.node'), '/var/job').message).toBe('cannot load node_modules/x.node');
+        expect(toFailure(new AnalysisError('BUNDLE_FAILED', '\u001b[31mcannot load\u001b[0m /private/var/job/node_modules/x.node'), ['/var/job']).message).toBe('cannot load node_modules/x.node');
     });
 
     it('calls anything else internal', () => {
-        expect(toFailure(new Error(''), '/work').code).toBe('INTERNAL');
+        expect(toFailure(new Error(''), ['/work']).code).toBe('INTERNAL');
+    });
+
+    it('removes the shared store too, which pnpm names in its errors', () => {
+        expect(toFailure(new Error('ENOSPC: /work/store/v10/files/ab/cd while adding /work/jobs/1/node_modules/x'), ['/work/jobs/1', '/work/store']).message).toBe(
+            'ENOSPC: v10/files/ab/cd while adding node_modules/x',
+        );
     });
 });

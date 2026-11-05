@@ -1,6 +1,9 @@
+import { rm } from 'node:fs/promises';
+import { join } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { pino } from 'pino';
 import { loadConfig } from '@config/env.ts';
+import { folderBytes } from '@modules/analysis/install.ts';
 import { runAnalysis } from '@modules/analysis/runner.ts';
 import { createBackendClient } from '@modules/backend/client.ts';
 
@@ -15,37 +18,81 @@ const backend = createBackendClient(config);
 
 const stop = new AbortController();
 
+const jobsDir = join(config.WORKER_DIR, 'jobs');
+const storeDir = join(config.WORKER_DIR, 'store');
+
+/** How often the store's size is looked at: walking it costs something, and it grows by one package at a time. */
+const STORE_CHECK_MS = 60 * 60_000;
+let storeChecked = Number.NEGATIVE_INFINITY;
+
+/**
+ * The shared store keeps every package ever installed here, so that the next analysis downloads less; past its limit it
+ * is emptied whole, since nothing in it is referenced once a job's folder is gone. Only ever run with no job in flight.
+ */
+const trimStore = async (): Promise<void> => {
+    if (performance.now() - storeChecked < STORE_CHECK_MS) return;
+    storeChecked = performance.now();
+    const bytes = await folderBytes(storeDir);
+    if (bytes <= config.STORE_MAX_BYTES) return;
+    await rm(storeDir, { recursive: true, force: true });
+    logger.info({ bytes, limit: config.STORE_MAX_BYTES }, 'store emptied');
+};
+
+/** Jobs in flight, and the store maintenance every slot waits for before taking the next one. */
+let active = 0;
+let maintenance: Promise<void> | undefined;
+
+const maintain = (): Promise<void> => {
+    maintenance ??= trimStore()
+        .catch((error: unknown) => logger.warn({ err: error }, 'store maintenance failed'))
+        .finally(() => {
+            maintenance = undefined;
+        });
+    return maintenance;
+};
+
 /** It only ever handles what the backend's queue holds, and that holds only what someone asked for: nothing is fetched on its own. */
 const slot = async (index: number): Promise<void> => {
     while (!stop.signal.aborted) {
         let waitForWork = false;
         try {
+            if (maintenance !== undefined) await maintenance;
             const job = await backend.claim();
             if (job === undefined) {
                 waitForWork = true;
             } else {
+                // Checked again after the wait for the backend, and counted at once: maintenance starts only when nothing is in flight.
+                if (maintenance !== undefined) await maintenance;
+                active++;
                 const started = performance.now();
                 const ms = (): number => Math.round(performance.now() - started);
-                await runAnalysis(job.package, config, async (message) => {
-                    switch (message.kind) {
-                        case 'result':
-                            await backend.complete(job.id, message.result);
-                            logger.info({ package: job.package, ms: ms(), sizes: message.result.sizes }, 'analyzed');
-                            break;
-                        case 'failure':
-                            await backend.fail(job.id, message.failure);
-                            logger.warn({ package: job.package, ms: ms(), failure: message.failure }, 'analysis failed');
-                            break;
-                        case 'exports':
-                            await backend.completeExports(job.id, message.exports);
-                            logger.info({ package: job.package, ms: ms(), named: message.exports.named.length, subpaths: message.exports.subpaths.length }, 'exports measured');
-                            break;
-                        case 'exports-failure':
-                            await backend.failExports(job.id);
-                            logger.warn({ package: job.package, ms: ms() }, 'exports not measured');
-                            break;
-                    }
-                });
+                try {
+                    await runAnalysis(job.package, config, async (message) => {
+                        switch (message.kind) {
+                            case 'result': {
+                                const accepted = await backend.complete(job.id, message.result);
+                                if (accepted) logger.info({ package: job.package, ms: ms(), sizes: message.result.sizes }, 'analyzed');
+                                else logger.warn({ package: job.package, ms: ms() }, 'analyzed too late: the backend had given the job away');
+                                break;
+                            }
+                            case 'failure':
+                                await backend.fail(job.id, message.failure);
+                                logger.warn({ package: job.package, ms: ms(), failure: message.failure }, 'analysis failed');
+                                break;
+                            case 'exports':
+                                await backend.completeExports(job.id, message.exports);
+                                logger.info({ package: job.package, ms: ms(), named: message.exports.named.length, subpaths: message.exports.subpaths.length }, 'exports measured');
+                                break;
+                            case 'exports-failure':
+                                await backend.failExports(job.id);
+                                logger.warn({ package: job.package, ms: ms() }, 'exports not measured');
+                                break;
+                        }
+                    });
+                } finally {
+                    active--;
+                    if (active === 0) await maintain();
+                }
             }
         } catch (error) {
             // The backend may simply not be up yet: try again in a while.
@@ -63,6 +110,9 @@ const shutdown = (signal: string): void => {
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('SIGINT', () => shutdown('SIGINT'));
 
+// A worker killed in the middle of a job left that job's folder behind; nothing else is ever in here at start.
+await rm(jobsDir, { recursive: true, force: true });
+await maintain();
 logger.info({ backend: config.BACKEND_URL, dir: config.WORKER_DIR, concurrency: config.WORKER_CONCURRENCY }, 'worker started');
 await Promise.all(Array.from({ length: config.WORKER_CONCURRENCY }, (_, index) => slot(index)));
 process.exit(0);
