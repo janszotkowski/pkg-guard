@@ -1,16 +1,22 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { randomBytes } from 'node:crypto';
+import { parseSpec, type PackagesResponse } from '@pkg-guard/core';
 import handler from '@tanstack/react-start/server-entry';
 import { API_URL } from '@config/api';
 import { ALLOW_INDEXING, canonicalUrl } from '@config/site';
 import { fetchKnownAnalysis, fetchMeasuredPackages } from '@lib/api';
+import { clientIpHeader, requestIp } from '@lib/clientIp';
+import { compressed } from '@lib/compression';
 import { aiCatalog } from '@lib/documents/discovery';
 import { llmsTxt } from '@lib/documents/llms';
 import { markdownTokens, notMeasuredMarkdown, packageMarkdown, packagePathSpec, wantsMarkdown } from '@lib/documents/markdown';
 import { robotsTxt } from '@lib/documents/robots';
 import { securityTxt } from '@lib/documents/securityTxt';
-import { STATIC_PAGES, sitemapXml } from '@lib/documents/sitemap';
+import { STATIC_PAGES, packageSitemap, packageSitemapCount, packageSitemapPage, pagesSitemap, sitemapIndex } from '@lib/documents/sitemap';
 import { renderDefaultOgImage, renderPackageOgImage } from '@lib/ogImage';
-import { documentPolicy, escapeScriptNuls, pageCacheControl, securityHeaders } from '@lib/securityHeaders';
+import { fixedWindowLimiter, ttlCache } from '@lib/rateLimit';
+import { contentSecurityPolicy, documentPolicy, escapeScriptNuls, pageCacheControl, securityHeaders } from '@lib/securityHeaders';
+import { VISITOR_STORE_KEY, visitorIp } from '@lib/visitor';
 
 const SECURITY_HEADERS = securityHeaders();
 
@@ -22,6 +28,16 @@ const NEGOTIATED_CACHE = 'private, max-age=300';
 
 const text = (body: string, contentType: string, cache = DOCUMENT_CACHE, status = 200, extra: Record<string, string> = {}): Response =>
     new Response(body, { status, headers: { 'content-type': contentType, 'cache-control': cache, ...extra } });
+
+const notFound = (): Response => text('Not found', 'text/plain; charset=utf-8', 'public, max-age=300', 404);
+
+/** The visitor each request renders for, read by the API client (`@config/api`) when it asks the API on their behalf. */
+const visitors = new AsyncLocalStorage<{ ip: string | undefined }>();
+(globalThis as Record<symbol, unknown>)[VISITOR_STORE_KEY] = visitors;
+const CLIENT_IP_HEADER = clientIpHeader(process.env['CLIENT_IP_HEADER']);
+
+/** Share images are the costliest thing here, and a package's is a different one for every version: one visitor gets a few a minute, then the site's card. */
+const ogLimiter = fixedWindowLimiter({ limit: 30, windowMs: 60_000 });
 
 /**
  * Share images: drawing one takes far longer than answering and blocks the server while it runs, and a shared link is
@@ -69,6 +85,16 @@ const shareImage = (key: string, draw: () => Promise<Buffer>): Promise<Uint8Arra
     return promise;
 };
 
+/**
+ * The measured packages the sitemap lists, read from the API at most every ten minutes: the index and every file are
+ * cut from one list, so a crawler walking them costs one request, and a file past the last one is refused without any.
+ */
+const measured = ttlCache<PackagesResponse['packages']>({ ttlMs: 10 * 60_000, max: 1 });
+const measuredPackages = (): Promise<PackagesResponse['packages']> => measured.get('packages', fetchMeasuredPackages);
+
+/** A file past the last one is not an empty sitemap: it does not exist, and will not for a while. */
+const NO_SITEMAP_CACHE = 'public, max-age=300';
+
 const png = (bytes: Uint8Array<ArrayBuffer>, cache: string): Response => new Response(bytes, { headers: { 'content-type': 'image/png', 'cache-control': cache } });
 
 const siteCard = (cache: string): Response => new Response(null, { status: 302, headers: { location: canonicalUrl('/og/default.png'), 'cache-control': cache } });
@@ -80,14 +106,33 @@ const DOCUMENTS: Readonly<Record<string, () => Response | Promise<Response>>> = 
     '/.well-known/security.txt': () => text(securityTxt(new Date()), 'text/plain; charset=utf-8', 'public, max-age=86400'),
     // Read by agents and registries from other origins, so any page may fetch it.
     '/.well-known/ai-catalog.json': () => text(aiCatalog(), 'application/json; charset=utf-8', DOCUMENT_CACHE, 200, { 'access-control-allow-origin': '*' }),
-    '/sitemap.xml': async () => text(sitemapXml(await fetchMeasuredPackages()), 'application/xml; charset=utf-8'),
+    '/sitemap.xml': async () => text(sitemapIndex((await measuredPackages()).length), 'application/xml; charset=utf-8'),
+    '/sitemaps/pages.xml': () => text(pagesSitemap(), 'application/xml; charset=utf-8'),
     '/og/default.png': async () => png(await shareImage('default', renderDefaultOgImage), 'public, max-age=86400, s-maxage=604800'),
 };
 
 const OG_PACKAGE = /^\/og\/package\/(.+)\.png$/;
 
+/** One file of the package sitemap, by its number in the address. */
+const packageSitemapResponse = async (page: number): Promise<Response> => {
+    const packages = await measuredPackages();
+    if (page > packageSitemapCount(packages.length)) return text('Not found', 'text/plain; charset=utf-8', NO_SITEMAP_CACHE, 404);
+    return text(packageSitemap(packages, page), 'application/xml; charset=utf-8');
+};
+
+/** A path segment as typed; an encoding that does not decode is no package name, which `parseSpec` then says. */
+const decoded = (segment: string): string => {
+    try {
+        return decodeURIComponent(segment);
+    } catch {
+        return '';
+    }
+};
+
 /** A package's share image, from what has been measured. A broken preview must never break a share: anything else gets the site's card. */
 const packageOgImage = async (spec: string): Promise<Response> => {
+    if (parseSpec(spec) === undefined) return notFound();
+    if (!ogLimiter.take(visitorIp() ?? 'unknown')) return siteCard('public, max-age=60');
     try {
         const analysis = await fetchKnownAnalysis(spec);
         if (analysis?.status !== 'done') return siteCard('public, max-age=300');
@@ -116,8 +161,10 @@ const packageMarkdownResponse = async (spec: string, twin: boolean): Promise<Res
 const documentResponse = (request: Request, pathname: string): Promise<Response> | Response | undefined => {
     const document = DOCUMENTS[pathname];
     if (document !== undefined) return document();
+    const sitemapPage = packageSitemapPage(pathname);
+    if (sitemapPage !== undefined) return packageSitemapResponse(sitemapPage);
     const og = OG_PACKAGE.exec(pathname)?.[1];
-    if (og !== undefined) return packageOgImage(decodeURIComponent(og));
+    if (og !== undefined) return packageOgImage(decoded(og));
     const accept = request.headers.get('accept');
     const pkg = packagePathSpec(pathname);
     if (pkg !== undefined && (pkg.twin || wantsMarkdown(accept))) return packageMarkdownResponse(pkg.spec, pkg.twin);
@@ -167,8 +214,11 @@ const respond = async (request: Request): Promise<Response> => {
     // Nothing on a non-production environment belongs in a search index, and neither does an error page.
     if (!ALLOW_INDEXING) headers.set('X-Robots-Tag', 'noindex, nofollow');
     else if (response.status >= 400) headers.set('X-Robots-Tag', 'noindex');
+    const acceptEncoding = request.headers.get('accept-encoding');
     if (response.headers.get('content-type')?.startsWith('text/html') !== true) {
-        return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+        // Not a page, so no inline script to allow: the policy without hashes, which still says where anything may load from.
+        if (import.meta.env.PROD) headers.set('Content-Security-Policy', contentSecurityPolicy(API_URL));
+        return compressed(new Response(response.body, { status: response.status, statusText: response.statusText, headers }), acceptEncoding);
     }
     // Hashed and sent as one text: the same bytes reach every browser and the policy.
     const html = escapeScriptNuls(await response.text());
@@ -180,14 +230,17 @@ const respond = async (request: Request): Promise<Response> => {
     headers.append('Link', `<${canonicalUrl('/llms.txt')}>; rel="describedby"; type="text/plain"`);
     const pkg = packagePathSpec(pathname);
     if (pkg !== undefined && !pkg.twin) headers.append('Link', `<${canonicalUrl(`/package/${pkg.spec}.md`)}>; rel="alternate"; type="text/markdown"`);
-    return new Response(html, { status: response.status, statusText: response.statusText, headers });
+    // Rendered here, past Nitro's compression of static files.
+    return compressed(new Response(html, { status: response.status, statusText: response.statusText, headers }), acceptEncoding);
 };
 
 /**
- * The server entry: documents and share images first, then pages. Every response goes out with the security headers;
- * an HTML page also with its own Content-Security-Policy (from the hashes of its inline scripts, so the whole body is
- * read), a cache policy a CDN can use, `Vary: Accept` and a `Link` to `llms.txt` for agents.
+ * The server entry: documents and share images first, then pages. Every response goes out with the security headers
+ * and, in production, a Content-Security-Policy; an HTML page's names the hashes of its inline scripts (so the whole
+ * body is read) and comes with a cache policy a CDN can use, `Vary: Accept` and a `Link` to `llms.txt` for agents.
+ * Pages and Markdown are compressed here, past Nitro's compression of static files. Each runs knowing whom it is for,
+ * so that what it asks the API counts against that visitor.
  */
 export default {
-    fetch: (request: Request) => respond(request),
+    fetch: (request: Request) => visitors.run({ ip: requestIp(request, CLIENT_IP_HEADER) }, () => respond(request)),
 };

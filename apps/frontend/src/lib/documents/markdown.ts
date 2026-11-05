@@ -1,4 +1,4 @@
-import type { AnalysisResponse } from '@pkg-guard/core';
+import { parseSpec, type AnalysisResponse } from '@pkg-guard/core';
 import { canonicalUrl, siteConfig } from '@config/site';
 import { formatDownloadTimes, formatSizeText } from '@lib/format';
 
@@ -24,11 +24,21 @@ export const wantsMarkdown = (accept: string | null | undefined): boolean => {
 /** A rough size for agents budgeting their context. */
 export const markdownTokens = (markdown: string): number => Math.ceil(markdown.length / 4);
 
-/** The package of `/package/react.md` or `/package/react`, or undefined. */
+/**
+ * The package of `/package/react.md` or `/package/react`, or undefined: for any other address, and for one that names no
+ * package anyone could ask for (an encoding that does not decode, a name the registry would refuse). Only a spec that
+ * passes here goes on to the API or into a response header.
+ */
 export const packagePathSpec = (pathname: string): { spec: string; twin: boolean } | undefined => {
     const match = /^\/package\/(.+?)(\.md)?$/.exec(pathname);
     if (match?.[1] === undefined) return undefined;
-    return { spec: decodeURIComponent(match[1]), twin: match[2] !== undefined };
+    let spec: string;
+    try {
+        spec = decodeURIComponent(match[1]);
+    } catch {
+        return undefined;
+    }
+    return parseSpec(spec) === undefined ? undefined : { spec, twin: match[2] !== undefined };
 };
 
 /** The author's text on one line of Markdown, taken literally: its own Markdown or HTML must not become ours. */
