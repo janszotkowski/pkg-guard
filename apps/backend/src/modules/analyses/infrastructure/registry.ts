@@ -4,7 +4,10 @@ import { selectVersions } from '@modules/analyses/application/versions.ts';
 import { AppError } from '@platform/errors.ts';
 
 const REGISTRY = 'https://registry.npmjs.org';
+const DOWNLOADS_API = 'https://api.npmjs.org/downloads/range';
 const TIMEOUT_MS = 10_000;
+const FULL_DOCUMENT_TIMEOUT_MS = 30_000;
+const HOUR_MS = 3_600_000;
 
 const SEARCH_SIZE = 8;
 const MAX_DESCRIPTION = 160;
@@ -23,26 +26,149 @@ export type StarsReader = (repository: string) => Promise<number | null>;
 
 export type MetadataReader = (name: string, version: string) => Promise<PackageMetadata>;
 
+const record = (value: unknown): Record<string, unknown> => (typeof value === 'object' && value !== null && !Array.isArray(value) ? (value as Record<string, unknown>) : {});
+
+/** What an answer may weigh: a version's document or a search page is kilobytes, so anything past this is not the answer asked for. */
+export const MAX_BODY_BYTES = 8 * 1024 * 1024;
+/** A popular package's full document runs to tens of megabytes; past this it is given up on rather than held in memory whole. */
+export const FULL_DOCUMENT_MAX_BYTES = 64 * 1024 * 1024;
+
+type Question = {
+    url: string;
+    /** Who is asked, for the message when it does not answer: the npm registry unless said otherwise. */
+    service?: string;
+    timeoutMs?: number;
+    /** How many bytes of body are read before the answer is given up on; `MAX_BODY_BYTES` unless said otherwise. */
+    maxBytes?: number;
+    headers?: Record<string, string>;
+    /** What a 404 means, as the message of NOT_FOUND. Without it, a 404 is an answer: `undefined`, for the caller to read. */
+    notFound?: string;
+};
+
+/**
+ * The body, read a chunk at a time and counted: `undefined` once it passes `maxBytes`, with the rest of it refused, so a
+ * document that is too large is never held whole, let alone parsed on the thread that serves requests.
+ */
+const readCapped = async (body: ReadableStream<Uint8Array> | null, maxBytes: number): Promise<Uint8Array | undefined> => {
+    if (body === null) return new Uint8Array();
+    const reader = body.getReader();
+    const chunks: Uint8Array[] = [];
+    let total = 0;
+    try {
+        for (;;) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            total += value.byteLength;
+            if (total > maxBytes) {
+                await reader.cancel();
+                return undefined;
+            }
+            chunks.push(value);
+        }
+    } finally {
+        reader.releaseLock();
+    }
+    return Buffer.concat(chunks);
+};
+
+/**
+ * JSON from an outside service, or an AppError: UNAVAILABLE when it did not answer in time, answered with an error, sent
+ * no JSON (the timeout covers the body too, so reading it can fail as the request can) or sent more than `maxBytes`, and
+ * NOT_FOUND for a 404. The registry answers 405 for a name it has no document for, which means the same.
+ */
+const askJson = async (question: Question): Promise<unknown> => {
+    const service = question.service ?? 'The npm registry';
+    const maxBytes = question.maxBytes ?? MAX_BODY_BYTES;
+    let response: Response;
+    try {
+        response = await fetch(question.url, { headers: { accept: 'application/json', ...question.headers }, signal: AbortSignal.timeout(question.timeoutMs ?? TIMEOUT_MS) });
+    } catch {
+        throw new AppError('UNAVAILABLE', `${service} did not answer`);
+    }
+    if (response.status === 404 || response.status === 405) {
+        await response.body?.cancel();
+        if (question.notFound === undefined) return undefined;
+        throw new AppError('NOT_FOUND', question.notFound);
+    }
+    if (!response.ok) {
+        await response.body?.cancel();
+        throw new AppError('UNAVAILABLE', `${service} answered ${response.status}`);
+    }
+    // A declared length past the cap is refused before a byte of it is read; an undeclared one is counted as it comes.
+    if (Number(response.headers.get('content-length') ?? 0) > maxBytes) {
+        await response.body?.cancel();
+        throw new AppError('UNAVAILABLE', `${service} sent too much data`);
+    }
+    let bytes: Uint8Array | undefined;
+    try {
+        bytes = await readCapped(response.body, maxBytes);
+    } catch {
+        throw new AppError('UNAVAILABLE', `${service} sent an unexpected answer`);
+    }
+    if (bytes === undefined) throw new AppError('UNAVAILABLE', `${service} sent too much data`);
+    try {
+        return JSON.parse(new TextDecoder().decode(bytes)) as unknown;
+    } catch {
+        throw new AppError('UNAVAILABLE', `${service} sent an unexpected answer`);
+    }
+};
+
+const CACHE_MAX = 500;
+
+/**
+ * A small cache for what an outside service would rather not be asked often. A value being fetched is shared with everyone
+ * who asks for it meanwhile, so a burst of the same question costs one request. A failure is not kept. Past `CACHE_MAX`
+ * entries the oldest goes.
+ */
+const remember = <T>(now: () => number, ttlMs: number) => {
+    const cache = new Map<string, { value: T; until: number }>();
+    const pending = new Map<string, Promise<T>>();
+    return {
+        /** The value for `key`: kept, on its way for someone else, or made now. `ttl` may give a value its own lifetime. */
+        share: (key: string, make: () => Promise<T>, ttl: (value: T) => number = () => ttlMs): Promise<T> => {
+            const entry = cache.get(key);
+            if (entry !== undefined && now() < entry.until) return Promise.resolve(entry.value);
+            const inFlight = pending.get(key);
+            if (inFlight !== undefined) return inFlight;
+            const promise = make()
+                .then((value) => {
+                    if (cache.size >= CACHE_MAX) cache.delete(cache.keys().next().value ?? key);
+                    cache.set(key, { value, until: now() + ttl(value) });
+                    return value;
+                })
+                .finally(() => pending.delete(key));
+            pending.set(key, promise);
+            return promise;
+        },
+    };
+};
+
+/** Runs tasks at most `limit` at a time; the rest wait their turn, in order. */
+const atMost = (limit: number) => {
+    let running = 0;
+    const waiting: (() => void)[] = [];
+    return async <T>(task: () => Promise<T>): Promise<T> => {
+        if (running >= limit) await new Promise<void>((resolve) => waiting.push(resolve));
+        running++;
+        try {
+            return await task();
+        } finally {
+            running--;
+            waiting.shift()?.();
+        }
+    };
+};
+
 /**
  * The exact version behind `latest`, another dist-tag or a version someone typed, from the registry's small document of
  * one version: the document of a whole package can be megabytes. `name` has passed `isValidPackageName`, so it is safe in
  * the path; the slash of a scoped name stays a slash, which is the form the registry answers on this path.
  */
 export const resolveFromRegistry: VersionResolver = async (name, versionOrTag) => {
-    let response: Response;
-    try {
-        response = await fetch(`${REGISTRY}/${name}/${encodeURIComponent(versionOrTag)}`, { headers: { accept: 'application/json' }, signal: AbortSignal.timeout(TIMEOUT_MS) });
-    } catch {
-        throw new AppError('UNAVAILABLE', 'The npm registry did not answer');
-    }
-    if (response.status === 404 || response.status === 405) throw new AppError('NOT_FOUND', `${name}@${versionOrTag} is not on npm`);
-    if (!response.ok) throw new AppError('UNAVAILABLE', `The npm registry answered ${response.status}`);
-    const manifest = (await response.json()) as { version?: unknown };
-    if (typeof manifest.version !== 'string') throw new AppError('UNAVAILABLE', 'The npm registry sent an unexpected answer');
-    return manifest.version;
+    const manifest = record(await askJson({ url: `${REGISTRY}/${name}/${encodeURIComponent(versionOrTag)}`, notFound: `${name}@${versionOrTag} is not on npm` }));
+    if (typeof manifest['version'] !== 'string') throw new AppError('UNAVAILABLE', 'The npm registry sent an unexpected answer');
+    return manifest['version'];
 };
-
-const record = (value: unknown): Record<string, unknown> => (typeof value === 'object' && value !== null && !Array.isArray(value) ? (value as Record<string, unknown>) : {});
 
 /** The registry's answer, in its order, without anything that could not be looked up afterwards. */
 export const parseSearch = (answer: unknown): PackageSuggestion[] => {
@@ -66,108 +192,57 @@ export const parseSearch = (answer: unknown): PackageSuggestion[] => {
 };
 
 /** Names and descriptions from the registry's search: no package is downloaded for this. */
-export const searchRegistry: PackageSearcher = async (query) => {
-    let response: Response;
-    try {
-        response = await fetch(`${REGISTRY}/-/v1/search?text=${encodeURIComponent(query)}&size=${SEARCH_SIZE}`, { headers: { accept: 'application/json' }, signal: AbortSignal.timeout(TIMEOUT_MS) });
-    } catch {
-        throw new AppError('UNAVAILABLE', 'The npm registry did not answer');
-    }
-    if (!response.ok) throw new AppError('UNAVAILABLE', `The npm registry answered ${response.status}`);
-    return parseSearch(await response.json());
-};
+export const searchRegistry: PackageSearcher = async (query) => parseSearch(await askJson({ url: `${REGISTRY}/-/v1/search?text=${encodeURIComponent(query)}&size=${SEARCH_SIZE}` }));
 
-const FULL_DOCUMENT_TIMEOUT_MS = 30_000;
 const VERSIONS_TTL_MS = 10 * 60_000;
-const VERSIONS_MAX_CACHED = 500;
+/** The registry's full documents run to tens of megabytes and are parsed on the one thread that serves requests: few at a time. */
+const FULL_DOCUMENTS_AT_ONCE = 2;
 
 /**
  * The releases worth showing for a package, with their dates. Only the registry's full document has the dates, and it runs
- * to tens of megabytes for a popular package, so only the pick is kept, for a while.
+ * to tens of megabytes for a popular package, so only the pick is kept, for a while, and a burst of questions about one
+ * package reads the document once.
  */
 export const createVersionLister = (now: () => number = Date.now): VersionLister => {
-    const cache = new Map<string, { versions: ReleasedVersion[]; until: number }>();
-    return async (name) => {
-        const cached = cache.get(name);
-        if (cached !== undefined && now() < cached.until) return cached.versions;
-        let response: Response;
-        try {
-            response = await fetch(`${REGISTRY}/${name}`, { headers: { accept: 'application/json' }, signal: AbortSignal.timeout(FULL_DOCUMENT_TIMEOUT_MS) });
-        } catch {
-            throw new AppError('UNAVAILABLE', 'The npm registry did not answer');
-        }
-        if (response.status === 404 || response.status === 405) throw new AppError('NOT_FOUND', `${name} is not on npm`);
-        if (!response.ok) throw new AppError('UNAVAILABLE', `The npm registry answered ${response.status}`);
-        const document = record(await response.json());
-        const latest = record(document['dist-tags'])['latest'];
-        const time = record(document['time']);
-        const versions = (
-            typeof latest === 'string'
-                ? selectVersions(Object.keys(record(document['versions'])), latest, (version) => {
-                      const date = time[version];
-                      return typeof date === 'string' ? date : undefined;
-                  })
-                : []
-        ).map((version) => {
-            const publishedAt = time[version];
-            return { version, publishedAt: typeof publishedAt === 'string' ? publishedAt : null };
-        });
-        if (cache.size >= VERSIONS_MAX_CACHED) cache.clear();
-        cache.set(name, { versions, until: now() + VERSIONS_TTL_MS });
-        return versions;
-    };
-};
-
-const DOWNLOADS_API = 'https://api.npmjs.org/downloads/range';
-const HOUR_MS = 3_600_000;
-const CACHE_MAX = 500;
-
-/** A small cache for what an outside service would rather not be asked often. */
-const remember = <T>(now: () => number, ttlMs: number) => {
-    const cache = new Map<string, { value: T; until: number }>();
-    return {
-        get: (key: string): T | undefined => {
-            const entry = cache.get(key);
-            return entry !== undefined && now() < entry.until ? entry.value : undefined;
-        },
-        set: (key: string, value: T, ttl = ttlMs): void => {
-            if (cache.size >= CACHE_MAX) cache.clear();
-            cache.set(key, { value, until: now() + ttl });
-        },
-    };
+    const cache = remember<ReleasedVersion[]>(now, VERSIONS_TTL_MS);
+    const fewAtATime = atMost(FULL_DOCUMENTS_AT_ONCE);
+    return (name) =>
+        cache.share(name, () =>
+            fewAtATime(async () => {
+                const document = record(await askJson({ url: `${REGISTRY}/${name}`, timeoutMs: FULL_DOCUMENT_TIMEOUT_MS, maxBytes: FULL_DOCUMENT_MAX_BYTES, notFound: `${name} is not on npm` }));
+                const latest = record(document['dist-tags'])['latest'];
+                const time = record(document['time']);
+                const dateOf = (version: string): string | undefined => {
+                    const date = time[version];
+                    return typeof date === 'string' ? date : undefined;
+                };
+                const picked = typeof latest === 'string' ? selectVersions(Object.keys(record(document['versions'])), latest, dateOf) : [];
+                return picked.map((version) => ({ version, publishedAt: dateOf(version) ?? null }));
+            }),
+        );
 };
 
 /** A package's downloads per day from npm's own statistics. npm updates them once a day. */
 export const createDownloadsReader = (now: () => number = Date.now): DownloadsReader => {
     const cache = remember<DownloadsResponse['days']>(now, HOUR_MS);
-    return async (name, range) => {
-        const key = `${range}:${name}`;
-        const cached = cache.get(key);
-        if (cached !== undefined) return cached;
-        const parts = await Promise.all(
-            rangeChunks(new Date(now()), TREND_RANGE_DAYS[range]).map(async (chunk) => {
-                let response: Response;
-                try {
-                    response = await fetch(`${DOWNLOADS_API}/${chunk.start}:${chunk.end}/${name}`, { headers: { accept: 'application/json' }, signal: AbortSignal.timeout(TIMEOUT_MS) });
-                } catch {
-                    throw new AppError('UNAVAILABLE', 'npm did not answer');
-                }
-                // npm answers 404 for a period before the package existed: that is no downloads, not a failure.
-                if (response.status === 404) return [];
-                if (!response.ok) throw new AppError('UNAVAILABLE', `npm answered ${response.status}`);
-                const rows = record(await response.json())['downloads'];
-                return Array.isArray(rows)
-                    ? rows.flatMap((row) => {
-                          const { day, downloads } = record(row);
-                          return typeof day === 'string' && typeof downloads === 'number' ? [{ day, downloads }] : [];
-                      })
-                    : [];
-            }),
-        );
-        const days = parts.flat();
-        cache.set(key, days);
-        return days;
-    };
+    return (name, range) =>
+        cache.share(`${range}:${name}`, async () => {
+            const parts = await Promise.all(
+                rangeChunks(new Date(now()), TREND_RANGE_DAYS[range]).map(async (chunk) => {
+                    const answer = await askJson({ url: `${DOWNLOADS_API}/${chunk.start}:${chunk.end}/${name}`, service: 'npm' });
+                    // npm answers 404 for a period before the package existed: that is no downloads, not a failure.
+                    if (answer === undefined) return [];
+                    const rows = record(answer)['downloads'];
+                    return Array.isArray(rows)
+                        ? rows.flatMap((row) => {
+                              const { day, downloads } = record(row);
+                              return typeof day === 'string' && typeof downloads === 'number' ? [{ day, downloads }] : [];
+                          })
+                        : [];
+                }),
+            );
+            return parts.flat();
+        });
 };
 
 const RESOLVED_TTL_MS = 60_000;
@@ -175,14 +250,7 @@ const RESOLVED_TTL_MS = 60_000;
 /** What a name or tag resolved to, kept for a minute: every package page starts with this question, and a new release can wait that long. A failure is not kept. */
 export const cacheResolver = (resolve: VersionResolver, now: () => number = Date.now): VersionResolver => {
     const cache = remember<string>(now, RESOLVED_TTL_MS);
-    return async (name, versionOrTag) => {
-        const key = `${name}@${versionOrTag}`;
-        const cached = cache.get(key);
-        if (cached !== undefined) return cached;
-        const version = await resolve(name, versionOrTag);
-        cache.set(key, version);
-        return version;
-    };
+    return (name, versionOrTag) => cache.share(`${name}@${versionOrTag}`, () => resolve(name, versionOrTag));
 };
 
 const MAX_DEPRECATED = 500;
@@ -219,40 +287,20 @@ export const parseVersionFacts = (answer: unknown): Pick<PackageMetadata, 'depre
 /** The name DefinitelyTyped gives a package: `@scope/name` becomes `@types/scope__name`. */
 export const definitelyTypedName = (name: string): string => `@types/${name.startsWith('@') ? name.slice(1).replace('/', '__') : name}`;
 
-const isOnRegistry = async (name: string): Promise<boolean> => {
-    let response: Response;
-    try {
-        response = await fetch(`${REGISTRY}/${name}/latest`, { headers: { accept: 'application/json' }, signal: AbortSignal.timeout(TIMEOUT_MS) });
-    } catch {
-        throw new AppError('UNAVAILABLE', 'The npm registry did not answer');
-    }
-    await response.body?.cancel();
-    if (response.status === 404 || response.status === 405) return false;
-    if (!response.ok) throw new AppError('UNAVAILABLE', `The npm registry answered ${response.status}`);
-    return true;
-};
+/** Whether the registry has a package of this name: its small `latest` document, read for nothing but its existence. */
+const isOnRegistry = async (name: string): Promise<boolean> => (await askJson({ url: `${REGISTRY}/${name}/latest` })) !== undefined;
 
 /** What npm says about one version: its small document in the registry, and the `@types` package when it declares no types. Nothing is installed. Kept for an hour. */
 export const createMetadataReader = (now: () => number = Date.now): MetadataReader => {
     const cache = remember<PackageMetadata>(now, HOUR_MS);
-    return async (name, version) => {
+    return (name, version) => {
         const key = `${name}@${version}`;
-        const cached = cache.get(key);
-        if (cached !== undefined) return cached;
-        let response: Response;
-        try {
-            response = await fetch(`${REGISTRY}/${name}/${encodeURIComponent(version)}`, { headers: { accept: 'application/json' }, signal: AbortSignal.timeout(TIMEOUT_MS) });
-        } catch {
-            throw new AppError('UNAVAILABLE', 'The npm registry did not answer');
-        }
-        if (response.status === 404 || response.status === 405) throw new AppError('NOT_FOUND', `${key} is not on npm`);
-        if (!response.ok) throw new AppError('UNAVAILABLE', `The npm registry answered ${response.status}`);
-        const { typesIncluded, ...facts } = parseVersionFacts(await response.json());
-        const typesName = definitelyTypedName(name);
-        const separate = !typesIncluded && (await isOnRegistry(typesName));
-        const metadata: PackageMetadata = { name, version, ...facts, types: typesIncluded ? 'included' : separate ? 'separate' : 'none', typesPackage: separate ? typesName : null };
-        cache.set(key, metadata);
-        return metadata;
+        return cache.share(key, async () => {
+            const { typesIncluded, ...facts } = parseVersionFacts(await askJson({ url: `${REGISTRY}/${name}/${encodeURIComponent(version)}`, notFound: `${key} is not on npm` }));
+            const typesName = definitelyTypedName(name);
+            const separate = !typesIncluded && (await isOnRegistry(typesName));
+            return { name, version, ...facts, types: typesIncluded ? 'included' : separate ? 'separate' : 'none', typesPackage: separate ? typesName : null };
+        });
     };
 };
 
@@ -266,22 +314,24 @@ const STARS_RETRY_MS = 10 * 60_000;
 export const createStarsReader = (token: string | undefined, now: () => number = Date.now): StarsReader => {
     const cache = remember<{ stars: number | null }>(now, STARS_TTL_MS);
     return async (repository) => {
-        const cached = cache.get(repository);
-        if (cached !== undefined) return cached.stars;
-        try {
-            const response = await fetch(`https://api.github.com/repos/${repository}`, {
-                headers: { accept: 'application/vnd.github+json', 'user-agent': 'pkg-guard', ...(token === undefined ? {} : { authorization: `Bearer ${token}` }) },
-                signal: AbortSignal.timeout(TIMEOUT_MS),
-            });
-            const stars = response.ok ? record(await response.json())['stargazers_count'] : undefined;
-            if (typeof stars === 'number') {
-                cache.set(repository, { stars });
-                return stars;
-            }
-        } catch {
-            // Handled below, as any other answer without a number.
-        }
-        cache.set(repository, { stars: null }, STARS_RETRY_MS);
-        return null;
+        const { stars } = await cache.share(
+            repository,
+            async () => {
+                try {
+                    const answer = await askJson({
+                        url: `https://api.github.com/repos/${repository}`,
+                        service: 'GitHub',
+                        headers: { accept: 'application/vnd.github+json', 'user-agent': 'pkg-guard', ...(token === undefined ? {} : { authorization: `Bearer ${token}` }) },
+                    });
+                    const count = record(answer)['stargazers_count'];
+                    return { stars: typeof count === 'number' ? count : null };
+                } catch {
+                    // Any answer without a number is the same to the page: no stars for a while.
+                    return { stars: null };
+                }
+            },
+            (value) => (value.stars === null ? STARS_RETRY_MS : STARS_TTL_MS),
+        );
+        return stars;
     };
 };
