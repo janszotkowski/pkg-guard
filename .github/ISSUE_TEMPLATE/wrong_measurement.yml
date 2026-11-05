@@ -1,0 +1,41 @@
+name: Wrong measurement
+description: A package's size, composition or install footprint does not match what you measure yourself.
+labels: [measurement]
+body:
+    - type: markdown
+      attributes:
+          value: |
+              pkg-guard measures a package with a real bundler, without running its code. If the numbers differ from yours, say how you measured: the bundler, its settings and the entry you imported matter. How it works is in docs/ARCHITECTURE.md.
+    - type: input
+      id: package
+      attributes:
+          label: Package and version
+          placeholder: react@19.1.0
+      validations:
+          required: true
+    - type: dropdown
+      id: kind
+      attributes:
+          label: What is wrong
+          options:
+              - The minified, gzip or brotli size
+              - The install size or the number of packages
+              - The composition (which packages make up the bundle)
+              - The exports and their sizes
+              - The package health panel (licence, types, module format, scripts)
+              - The version history or the trends
+              - Something else
+      validations:
+          required: true
+    - type: textarea
+      id: difference
+      attributes:
+          label: What pkg-guard shows, and what you measured
+          description: Both numbers, and the bundler and settings you used.
+      validations:
+          required: true
+    - type: input
+      id: link
+      attributes:
+          label: Link to the package page
+          placeholder: https://…/package/react@19.1.0

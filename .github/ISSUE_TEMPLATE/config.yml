@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+    - name: Report a security vulnerability in pkg-guard
+      url: https://github.com/janszotkowski/pkg-guard/security/advisories/new
+      about: Please report security problems privately, never in a public issue.
+    - name: A package itself has a problem
+      url: https://www.npmjs.com/support
+      about: A vulnerability or a bug in a measured package goes to its maintainers or to npm; pkg-guard only measures what they publish.

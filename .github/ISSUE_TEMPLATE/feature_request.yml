@@ -1,0 +1,27 @@
+name: Feature request
+description: Suggest a feature, a new measurement or a new view.
+labels: [enhancement]
+body:
+    - type: textarea
+      id: problem
+      attributes:
+          label: What would you like to do?
+          description: The question you want answered or the task you want done, rather than a specific solution.
+      validations:
+          required: true
+    - type: textarea
+      id: proposal
+      attributes:
+          label: How could pkg-guard help?
+          description: A sketch of the feature, measurement or view you have in mind. The roadmap (docs/ROADMAP.md) lists what is already planned.
+    - type: textarea
+      id: data
+      attributes:
+          label: Data it needs
+          description: For a new measurement or source, say where the data comes from and what it costs to get (a download of the package, a question to a registry).
+    - type: checkboxes
+      id: help
+      attributes:
+          label: Contributing
+          options:
+              - label: I would like to work on this myself.
