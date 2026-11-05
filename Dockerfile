@@ -22,6 +22,7 @@ RUN corepack enable pnpm && corepack install && pnpm --version
 FROM base AS manifests
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/backend/package.json apps/backend/
+COPY apps/cli/package.json apps/cli/
 COPY apps/e2e/package.json apps/e2e/
 COPY apps/frontend/package.json apps/frontend/
 COPY apps/worker/package.json apps/worker/

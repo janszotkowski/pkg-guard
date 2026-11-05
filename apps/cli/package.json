@@ -1,0 +1,24 @@
+{
+    "name": "@pkg-guard/cli",
+    "version": "0.0.0",
+    "private": true,
+    "description": "Command line: what an npm package costs your bundle, from the pkg-guard API",
+    "bin": {
+        "pkg-guard": "./dist/main.cli.mjs"
+    },
+    "type": "module",
+    "scripts": {
+        "build": "tsdown",
+        "test": "vitest run",
+        "typecheck": "tsc -p tsconfig.json"
+    },
+    "dependencies": {
+        "@pkg-guard/core": "workspace:*",
+        "zod": "4.6.7"
+    },
+    "devDependencies": {
+        "@types/node": "26.6.4",
+        "tsdown": "0.23.0",
+        "vitest": "5.0.3"
+    }
+}

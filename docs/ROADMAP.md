@@ -19,10 +19,10 @@ These download nothing extra and show a difference straight away.
 
 ## 3. Outside the website
 
-These need the API to be public, see the [TODO](TODO.md).
+These reach people once the API is public, see the [TODO](TODO.md). Until then they work against a local one.
 
 - [ ] **GitHub Action (M)**: a pull request comment such as "this change adds 34 kB", with an optional size limit.
-- [ ] **CLI (S–M)**: `npx pkg-guard react` prints the result in the terminal.
+- [x] **CLI (S–M)**: `pkg-guard react` prints the result in the terminal. Publishing it is in the [TODO](TODO.md).
 - [ ] **MCP server (S)**: an AI agent checks what a dependency costs before adding it. Built on the existing API.
 
 ## 4. Security and CVE Tracker

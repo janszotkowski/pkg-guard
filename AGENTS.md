@@ -15,7 +15,7 @@ Rules for coding agents, and for people. Most are enforced by `pnpm verify`; the
 
 ## What the repository is
 
-A pnpm workspace with Turborepo: `apps/backend` (Hono API over SQLite, the job queue), `apps/worker` (the analyzer, runs only in Docker), `apps/frontend` (TanStack Start, server-rendered), `apps/e2e` (Playwright) and `packages/core` (the shared contract, zod/mini). The backend, the worker and core are plain Node ESM in TypeScript; the frontend is React 19.
+A pnpm workspace with Turborepo: `apps/backend` (Hono API over SQLite, the job queue), `apps/worker` (the analyzer, runs only in Docker), `apps/frontend` (TanStack Start, server-rendered), `apps/cli` (the command line), `apps/e2e` (Playwright) and `packages/core` (the shared contract, zod/mini). The backend, the worker, the CLI and core are plain Node ESM in TypeScript; the frontend is React 19.
 
 ## Before you change anything
 
@@ -35,11 +35,12 @@ A pnpm workspace with Turborepo: `apps/backend` (Hono API over SQLite, the job q
     | `apps/backend`  | `@config` `@platform` `@modules` `@composition` `@src` `@tests`            |
     | `apps/worker`   | `@config` `@modules` `@src` `@tests`                                       |
     | `apps/frontend` | `@components` `@config` `@lib` `@routes` `@styles` `@src` `@tests` `@vite` |
+    | `apps/cli`      | `@src` `@tests`                                                            |
     | `packages/core` | `@src` `@tests` (tests only; `src` keeps relative imports, other packages consume it as source) |
 
     A new top-level folder gets an alias of the same name in that package's `tsconfig.json` (and, for the backend, in `tests/architecture.test.ts`).
 
-- **Backend, worker and core imports carry the `.ts` extension**: `import { AppError } from '@platform/errors.ts'`. Frontend imports do not (`moduleResolution: Bundler`).
+- **Backend, worker, CLI and core imports carry the `.ts` extension**: `import { AppError } from '@platform/errors.ts'`. Frontend imports do not (`moduleResolution: Bundler`).
 - **TypeScript strict, and then some**: no `any`, no casts to make the compiler quiet, `type` not `interface`, no unused variables, no empty functions, `noUncheckedIndexedAccess` and `exactOptionalPropertyTypes` are on. Use `undefined`, not `null`, for "no value" unless a contract says otherwise.
 - **No `console.log`** (lint allows only `warn` and `error`): the backend and the worker log through pino; `tools/*.js` write to `process.stdout`/`stderr`.
 - **`packages/core` runs in the browser and in Node**: no `window`, `document`, `localStorage`, `navigator`, `process` or `Buffer` there, and `zod/mini` instead of `zod`.

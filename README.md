@@ -50,6 +50,7 @@ A package page asks the API for its analysis. The API answers from its store, or
 apps/backend     HTTP API (Hono on Node 24), SQLite store of measurements and the job queue
 apps/worker      The analyzer, run only in Docker: installs, bundles and measures one package at a time
 apps/frontend    Web app (TanStack Start, Router, Query, Table, Charts; Tailwind; Nitro)
+apps/cli         Command line: asks the API what a package costs and prints it
 apps/e2e         Browser tests (Playwright) with an axe-core audit
 packages/core    Shared contract (zod/mini schemas and types), package spec parsing
 docker           The configuration of the worker's network gateway
@@ -119,6 +120,16 @@ Errors share one shape, `{ error: { code, message, requestId } }`, with codes `V
 ### Badge
 
 The frontend draws a badge with the gzip size at `/badge/<name>.svg`. Showing one never causes a download: a package not measured yet says so. Every package page has a button that copies the Markdown for a README.
+
+### Command line
+
+```bash
+pnpm --filter @pkg-guard/cli build
+node apps/cli/dist/main.cli.mjs react
+node apps/cli/dist/main.cli.mjs react@19.1.0 --json
+```
+
+It asks the API, and waits while a package is being measured. Until the site is deployed, it asks the local one; `--api <url>` or `PKG_GUARD_API_URL` name another. The exit code is 0 with a result, 1 without one and 2 for a command line that makes no sense.
 
 ## Configuration
 
