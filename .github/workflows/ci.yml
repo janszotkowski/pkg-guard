@@ -1,14 +1,17 @@
 name: CI
 
-# Every push to main and every pull request runs the same checks as `pnpm verify` locally.
+# Every push to main and every pull request runs the same checks as `pnpm verify` locally, then the browser tests and
+# the Docker images. A red run must block the merge (branch protection: require the "Verify" check).
 on:
     push:
         branches: [main]
     pull_request:
 
+# Nothing here writes to the repository or needs a secret.
 permissions:
     contents: read
 
+# A newer push to the same branch makes an older run pointless.
 concurrency:
     group: ci-${{ github.ref }}
     cancel-in-progress: true
@@ -16,25 +19,134 @@ concurrency:
 env:
     TURBO_TELEMETRY_DISABLED: '1'
     DO_NOT_TRACK: '1'
+    # A frontend build needs the API address the browser will call (`.env` is not in git); the smoke test and the browser
+    # tests build for their own ports, so these only need to be set, and the local ones are as good as any.
+    VITE_API_URL: 'http://127.0.0.1:4100'
+    VITE_SITE_URL: 'http://127.0.0.1:3100'
 
 jobs:
     verify:
         name: Verify
         runs-on: ubuntu-24.04
-        timeout-minutes: 15
+        timeout-minutes: 25
         steps:
-            # Actions are pinned to a commit (a tag can be moved to other code).
-            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+            # Actions are pinned to a full commit SHA (the tag is in the comment): a moved tag cannot change what runs.
+            # Dependabot keeps them current (.github/dependabot.yml); `pnpm policy` fails on one that is not pinned.
+            - name: Check out
+              uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
               with:
                   # No token left in .git/config for the steps after it: nothing here pushes.
                   persist-credentials: false
-            - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
-            - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+
+            # pnpm's version comes from "packageManager" in package.json.
+            - name: Set up pnpm
+              uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+
+            # Node's version comes from .node-version, the same file the project uses locally; the pnpm store is cached by the lockfile.
+            - name: Set up Node
+              uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
               with:
                   node-version-file: .node-version
                   cache: pnpm
-            - run: pnpm install --frozen-lockfile
+
+            - name: Install
+              run: pnpm install --frozen-lockfile
+
+            # Turborepo's local cache (.turbo/cache): a task whose inputs did not change since an earlier run is replayed, not run.
+            # Each run saves its own entry (keyed by the commit) and starts from the newest one for the same lockfile, else any.
+            - name: Turborepo cache
+              uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+              with:
+                  path: .turbo
+                  key: turbo-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
+                  restore-keys: |
+                      turbo-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-
+                      turbo-${{ runner.os }}-
+
             # A known vulnerability in any dependency fails the run, so it is fixed (or overridden) before it ships.
             - name: Dependency audit
               run: pnpm audit --audit-level=low
-            - run: pnpm verify
+
+            - name: Dependency and workflow policy
+              run: pnpm policy
+
+            - name: Lint (oxlint)
+              run: pnpm lint
+
+            - name: Formatting (oxfmt)
+              run: pnpm format:check
+
+            - name: Types
+              run: pnpm typecheck
+
+            - name: Tests
+              run: pnpm test
+
+            - name: Build
+              run: pnpm build
+
+            # Starts the built backend and frontend as production would run them and checks that they work together.
+            - name: Smoke test
+              run: pnpm smoke
+
+            # The browser tests: Chromium against the built apps (apps/e2e), with no worker, so nothing is downloaded from npm.
+            - name: Install Chromium for the browser tests
+              run: pnpm --filter @pkg-guard/e2e exec playwright install --with-deps chromium
+
+            # The HTML report (with the trace of a retried test) is written in CI too, for the upload below.
+            - name: Browser tests (Playwright)
+              run: pnpm e2e --reporter=list,html
+
+            - name: Upload the Playwright report
+              if: failure()
+              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+              with:
+                  name: playwright-report
+                  path: |
+                      apps/e2e/playwright-report
+                      apps/e2e/test-results
+                  retention-days: 14
+                  if-no-files-found: ignore
+
+            # Generated files that are committed (the route tree) are regenerated by the build. If that
+            # changed anything, the commit is out of date, and nothing else may have been touched either.
+            - name: Generated files are up to date
+              run: |
+                  if [ -n "$(git status --porcelain)" ]; then
+                    echo "The working tree changed during the run. Commit the regenerated files:"
+                    git status --short
+                    git --no-pager diff --stat
+                    exit 1
+                  fi
+
+            # The images are built, not pushed; their layers are kept in the Actions cache, so an unchanged layer
+            # is not built again on the next run. A broken Dockerfile fails here, not on the next `pnpm dev`.
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+            - name: Docker image (worker)
+              uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+              with:
+                  context: .
+                  target: worker
+                  push: false
+                  cache-from: type=gha,scope=worker
+                  cache-to: type=gha,scope=worker,mode=max
+
+            - name: Docker image (backend)
+              uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+              with:
+                  context: .
+                  target: backend
+                  push: false
+                  cache-from: type=gha,scope=backend
+                  cache-to: type=gha,scope=backend,mode=max
+
+            - name: Docker image (frontend)
+              uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+              with:
+                  context: .
+                  target: frontend
+                  push: false
+                  cache-from: type=gha,scope=frontend
+                  cache-to: type=gha,scope=frontend,mode=max

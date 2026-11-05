@@ -1,0 +1,16 @@
+{
+    "name": "@pkg-guard/e2e",
+    "version": "0.0.0",
+    "private": true,
+    "description": "Browser tests: the built backend and frontend together, on a desktop and a phone, with an axe-core audit",
+    "type": "module",
+    "scripts": {
+        "test:e2e": "playwright test",
+        "typecheck": "tsc -p tsconfig.json"
+    },
+    "devDependencies": {
+        "@playwright/test": "1.63.0",
+        "@types/node": "26.6.4",
+        "axe-core": "4.14.0"
+    }
+}

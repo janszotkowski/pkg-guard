@@ -1,0 +1,8 @@
+# Only the GitHub Actions the workflows use. npm dependencies are updated by hand: they are pinned exactly and must
+# be at least 7 days old (minimumReleaseAge in pnpm-workspace.yaml), which pnpm enforces at install time.
+version: 2
+updates:
+    - package-ecosystem: github-actions
+      directory: /
+      schedule:
+          interval: monthly
