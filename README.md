@@ -18,7 +18,7 @@
 - **Package health**: licence, TypeScript types, ESM or CommonJS, last release, install scripts, Node built-ins and native add-ons it reaches for.
 - **Version history**: how the size changed from release to release, and any version measured on request.
 - **Trends**: up to several packages side by side, by size across releases or downloads over time, with GitHub stars.
-- **Its code never runs**: packages are installed without their scripts, in a Docker container with a read-only root, no capabilities and caps on memory, processors and processes; the bundler only reads them. What is downloaded stays on a Docker volume, never on the machine.
+- **Its code never runs**: packages are installed without their scripts, in a Docker container with a read-only root, no capabilities, caps on memory, processors and processes, and a network that reaches only the npm registry; the bundler only reads them. What is downloaded stays on a Docker volume, never on the machine.
 - **Made to be found and cited**: server-rendered pages with structured data and a share image, `sitemap.xml`, `llms.txt`, and a Markdown version of every measured package for AI agents (`/package/<name>.md` or `Accept: text/markdown`).
 - **Accessible**: WCAG 2.2 AA, checked with axe-core in the browser tests; full keyboard use (`Ctrl`/`⌘ K` for the search), screen reader announcements, light and dark themes, reduced motion, and a table view of every chart's numbers.
 
@@ -39,7 +39,7 @@ A package page asks the API for its analysis. The API answers from its store, or
 
 #### Security and performance
 
-- **Untrusted input, contained.** The worker runs only in Docker, with a read-only root filesystem, no Linux capabilities, no privilege gain and caps on memory, CPU and processes; it refuses to start anywhere else. Packages are installed with `--ignore-scripts` and never executed.
+- **Untrusted input, contained.** The worker runs only in Docker, with a read-only root filesystem, no Linux capabilities, no privilege gain and caps on memory, CPU and processes; it refuses to start anywhere else. Its only network has no route out of Docker but a gateway to `registry.npmjs.org`. Packages are installed with `--ignore-scripts` and never executed.
 - **Fair use.** Every caller gets 300 requests a minute to `/v1/*`; queueing downloads (`POST /v1/history`) has a far smaller share, so a crawler cannot fill the queue by opening pages. The frontend's rendering proves itself with a token and is limited per visitor instead. `RateLimit-*` headers say where you stand; a `429` carries `Retry-After`.
 - **Hardened pages.** A strict Content-Security-Policy that allows inline scripts only by hash and nonce, `frame-ancestors 'none'`, HSTS, `nosniff`, a strict referrer policy.
 - **Supply chain.** Exact dependency versions, each at least 7 days old before pnpm installs it; transitive dependencies from the registry only; install scripts allowed one by one; Docker base images pinned by digest; GitHub Actions pinned to a commit; pnpm installed through Corepack and verified by its hash. `pnpm policy` fails when any of it slips.
@@ -52,6 +52,7 @@ apps/worker      The analyzer, run only in Docker: installs, bundles and measure
 apps/frontend    Web app (TanStack Start, Router, Query, Table, Charts; Tailwind; Nitro)
 apps/e2e         Browser tests (Playwright) with an axe-core audit
 packages/core    Shared contract (zod/mini schemas and types), package spec parsing
+docker           The configuration of the worker's network gateway
 tools            Policy check, smoke test, .env initializer, oxlint plugin
 ```
 
@@ -82,7 +83,7 @@ pnpm dev
 | Web app | http://localhost:3100           |
 | API     | http://127.0.0.1:4100/v1/health |
 
-The worker stays idle until you look up a package, and then downloads that package and its dependencies from npm without running any of their scripts. They stay on a Docker volume, never on your machine. The worker keeps running after `pnpm dev` ends.
+The worker stays idle until you look up a package, and then downloads that package and its dependencies from npm without running any of their scripts. They stay on a Docker volume, never on your machine. The worker and its network gateway keep running after `pnpm dev` ends.
 
 ```bash
 pnpm worker:logs    # what the worker is doing

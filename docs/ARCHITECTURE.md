@@ -38,6 +38,7 @@ A package is untrusted code. It is read, never run:
 
 - **Only in Docker**: the worker refuses to start outside its container. Everything it downloads stays on the `worker-data` volume, and `pnpm worker:clean` removes it.
 - **A hardened container**: a read-only filesystem, no capabilities, an unprivileged user, and limits on memory and processes.
+- **One way out**: the worker's only network is `internal`, with no route out of Docker. On it, `registry.npmjs.org` resolves to a small gateway (`docker/registry-gateway.conf`) that forwards raw TCP to that one host, whatever the client asks for, and to the API when it runs on the machine. TLS passes through it, so pnpm still checks the registry's own certificate. `pnpm policy` fails if the worker leaves that network.
 - **No scripts**: `pnpm install --ignore-scripts`, and dependencies may come from the registry only (`blockExoticSubdeps`).
 - **No code execution**: the bundler parses the code. Nothing imports or runs it.
 - **No secrets**: the analysis process does not receive `WORKER_TOKEN`, the user-level npm and pnpm configuration is replaced by empty files, and the worker has no database.
@@ -50,15 +51,13 @@ Every caller gets a share of the API per minute (`RATE_LIMIT_PER_MINUTE`), count
 
 The frontend's server renders pages for every visitor at once, so it is not one caller: it proves itself with `INTERNAL_API_TOKEN` and names the visitor in `x-visitor-ip`, whom the API then counts against `RATE_LIMIT_RENDER_PER_MINUTE`. The documents it renders for itself (the sitemap, share images) name none and share one count of the same size, so the token alone never means unlimited. Share images, the costliest thing the frontend draws, have a small limit per visitor of their own.
 
-**Not there yet, and required before this runs on a public server:** limiting the worker's network to the npm registry.
-
 ## Threat model
 
 What could go wrong, and what stands in the way. The controls are the ones described above, gathered by the threat they answer.
 
 | Threat | Control |
 |---|---|
-| **Untrusted package code** runs on the server | It never runs: the bundler parses it (`--ignore-scripts`, no imports, no `binding.gyp` builds). One process group per package inside a hardened container (read-only filesystem, no capabilities, unprivileged user, memory and process limits), killed after `JOB_TIMEOUT_MS`, with a cap on installed bytes. The process holds no secrets and the worker no database. Still to do: the worker's network limited to the registry |
+| **Untrusted package code** runs on the server | It never runs: the bundler parses it (`--ignore-scripts`, no imports, no `binding.gyp` builds). One process group per package inside a hardened container (read-only filesystem, no capabilities, unprivileged user, memory and process limits), killed after `JOB_TIMEOUT_MS`, with a cap on installed bytes. The process holds no secrets and the worker no database. Its network reaches only the registry, through a gateway with one fixed destination, and the API |
 | **The registry or its CDN misbehaves**: an error page, a huge or hostile document, a slow answer | Every answer is read with a timeout that covers the body and a byte cap (8 MiB; 64 MiB for a package's full document), past which it is given up on unread. Fields are read defensively, never trusted to have a shape. Full documents are parsed two at a time at most, and what was read is kept for a while, so one package in a burst costs one request. A failure is answered 503 with `Retry-After` and is not cached |
 | **Queue flooding**: a crawler or a script has the worker download the world | Opening a page queues at most the one version it shows; the versions of a history are queued only on an explicit `POST`, which has a share of its own (`RATE_LIMIT_QUEUE_PER_MINUTE`), behind what someone is waiting for. The queue has a ceiling (`QUEUE_MAX_WAITING`), past which the API answers 503 rather than piling up. Documents for crawlers ask with `known=1` and never queue |
 | **The internal token** reaches further than it should | It only moves a request from the per-caller limit to the per-visitor one; it opens nothing else. A request carrying it without a visitor, or with one that is no address, shares one count, so neither a leaked token nor a misconfigured proxy means unlimited. The example value is refused in production, and the token is compared in constant time |

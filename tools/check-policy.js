@@ -10,6 +10,7 @@
  * - the Dockerfile uses the same Node and pnpm versions (pnpm through Corepack, or `npm install --global pnpm@x.y.z`),
  *   and its base images are pinned by digest
  * - every image docker-compose.yml pulls is pinned by digest
+ * - the worker stays on a network with no route out of Docker
  * - every GitHub Action is pinned to a full commit SHA
  */
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
@@ -99,6 +100,13 @@ for (const file of ['docker-compose.yml', 'docker-compose.yaml', 'compose.yml', 
             if (!/@sha256:[0-9a-f]{64}$/.test(image[1])) problems.push(`${file}:${index + 1}: image "${image[1]}" is not pinned by digest`);
         });
 }
+
+// The worker handles untrusted packages: its only network has no route out, and nothing publishes a port of it.
+const compose = read('docker-compose.yml');
+const workerService = /^ {4}worker:\n((?: {8}.*\n|\s*\n)*)/m.exec(compose)?.[1] ?? '';
+if (!/^ {8}networks: \[analysis\]$/m.test(workerService)) problems.push('docker-compose.yml: the worker must be on the `analysis` network and no other');
+if (/^ {8}(?:ports|extra_hosts|network_mode):/m.test(workerService)) problems.push('docker-compose.yml: the worker may have no ports, extra_hosts or network_mode');
+if (!/^networks:\n(?:.*\n)*? {4}analysis:\n {8}internal: true$/m.test(compose)) problems.push('docker-compose.yml: the `analysis` network must be `internal: true`');
 
 // 3. pnpm's own settings.
 const workspace = read('pnpm-workspace.yaml');

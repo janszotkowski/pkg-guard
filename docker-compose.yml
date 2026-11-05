@@ -49,10 +49,39 @@ services:
             BACKEND_URL: ${BACKEND_URL:-http://host.docker.internal:4100}
             # The value in apps/backend/.env.example, which production refuses. Another value there needs the same one here.
             WORKER_TOKEN: ${WORKER_TOKEN:-local-development-only-not-a-secret}
-        extra_hosts:
-            - 'host.docker.internal:host-gateway'
+        # Nothing else on this network but the gateway below and, with the `app` profile, the API: no route to the internet,
+        # the machine's own network or any other container.
+        networks: [analysis]
+        depends_on:
+            - registry-gateway
         volumes:
             - worker-data:/work
+
+    # The worker's only way out: registry.npmjs.org, and the API when it runs on the machine (docker/registry-gateway.conf).
+    # Both names resolve to this container on the worker's network, so nothing in the worker or in pnpm is configured for it.
+    registry-gateway:
+        image: nginxinc/nginx-unprivileged:1.31.7-alpine@sha256:b5047b9b76845eac124358373c6852377c52e4b05834a47647e955dd91cb8f1e
+        restart: unless-stopped
+        logging: *logging
+        <<: *hardening
+        # Straight to nginx: the image's start-up scripts only rewrite its default configuration, which is not used here.
+        entrypoint: ['nginx', '-g', 'daemon off;']
+        mem_limit: 64m
+        pids_limit: 32
+        tmpfs: ['/tmp:size=8m']
+        # It must take port 443 without any capability, as the registry's address is https://registry.npmjs.org/.
+        sysctls:
+            net.ipv4.ip_unprivileged_port_start: 443
+        extra_hosts:
+            - 'host.docker.internal:host-gateway'
+        networks:
+            default:
+            analysis:
+                aliases:
+                    - registry.npmjs.org
+                    - host.docker.internal
+        volumes:
+            - ./docker/registry-gateway.conf:/etc/nginx/nginx.conf:ro
 
     # The API: the store of measurements and the queue the worker takes jobs from. Production settings, so the tokens must be real ones.
     api:
@@ -83,6 +112,8 @@ services:
             CLIENT_IP_HEADER: ${CLIENT_IP_HEADER:-}
             # Optional: GitHub allows 60 questions an hour without it, for the stars in the trends table.
             GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+        # `analysis` is how the worker reaches it (BACKEND_URL=http://api:4100); `default` is its own way out, to npm and GitHub.
+        networks: [default, analysis]
         volumes:
             - api-data:/data
         # This machine only (for a local run, or `curl` on the server): the internet reaches the API through a reverse proxy or a tunnel.
@@ -114,6 +145,11 @@ services:
                 condition: service_healthy
         ports:
             - '127.0.0.1:3100:3100'
+
+networks:
+    # No route out of Docker: what is on it reaches only what else is on it.
+    analysis:
+        internal: true
 
 volumes:
     worker-data:

@@ -19,7 +19,7 @@
         "build": "turbo run build",
         "dev": "node tools/init-env.js && docker compose up --detach --build worker && turbo run dev",
         "worker:logs": "docker compose logs --follow worker",
-        "worker:stop": "docker compose stop worker",
+        "worker:stop": "docker compose stop worker registry-gateway",
         "worker:clean": "docker compose down --volumes",
         "start": "turbo run start",
         "lint": "oxlint --deny-warnings",
