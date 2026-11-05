@@ -3,6 +3,7 @@ import { PackageCheck } from 'lucide-react';
 import { DesktopNav } from '@components/DesktopNav';
 import { MobileNav } from '@components/MobileNav';
 import { PackageSearch } from '@components/PackageSearch';
+import { StarOnGitHub } from '@components/StarOnGitHub';
 import { ThemeToggle } from '@components/ThemeToggle';
 import { siteConfig } from '@config/site';
 
@@ -29,6 +30,7 @@ export const SiteHeader = () => {
                         </div>
                     )}
                     <DesktopNav />
+                    <StarOnGitHub className={'mx-2 hidden lg:inline-flex'} />
                     <ThemeToggle />
                     <MobileNav />
                 </div>

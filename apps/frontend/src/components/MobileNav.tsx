@@ -3,6 +3,7 @@ import { useLocation } from '@tanstack/react-router';
 import { Menu, X } from 'lucide-react';
 import { useState } from 'react';
 import { SiteLink } from '@components/SiteLink';
+import { StarOnGitHub } from '@components/StarOnGitHub';
 import { isCurrentLink, NAV_GROUPS } from '@config/nav';
 import { cn } from '@lib/utils';
 
@@ -74,6 +75,7 @@ export const MobileNav = () => {
                                 </ul>
                             </section>
                         ))}
+                        <StarOnGitHub className={'inline-flex w-fit'} />
                     </nav>
                 </Dialog.Popup>
             </Dialog.Portal>

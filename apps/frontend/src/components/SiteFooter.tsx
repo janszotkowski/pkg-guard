@@ -1,6 +1,7 @@
 import { Link } from '@tanstack/react-router';
 import { PackageCheck } from 'lucide-react';
 import { SiteLink } from '@components/SiteLink';
+import { StarOnGitHub } from '@components/StarOnGitHub';
 import { NAV_GROUPS } from '@config/nav';
 import { siteConfig } from '@config/site';
 
@@ -50,6 +51,7 @@ export const SiteFooter = () => (
                         {siteConfig.title}
                     </Link>
                     <p className={'max-w-xs text-callout text-muted-foreground'}>Free and open source, MIT licensed. No account, no tracking.</p>
+                    <StarOnGitHub className={'inline-flex w-fit'} />
                     <div className={'-ml-3 flex items-center gap-1'}>
                         <a
                             href={siteConfig.repository}
