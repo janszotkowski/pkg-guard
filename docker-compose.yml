@@ -1,5 +1,28 @@
-# The worker, the one part of the project that downloads npm packages, isolated from the machine: `pnpm dev` starts it.
-# What it downloads stays on the `worker-data` volume, inside Docker. `pnpm worker:clean` removes all of it.
+# Two ways to run it:
+#   `pnpm dev`                   the worker only, in Docker (the one part of the project that downloads npm packages, kept
+#                                off the machine); the API and the frontend run on the machine with reload.
+#   `pnpm stack`                 the whole product the way production runs it: API, frontend and worker, built from the
+#                                Dockerfile. The API and the frontend are in the `app` profile, so a plain `docker compose up`
+#                                never takes ports 3100 and 4100 from `pnpm dev`. It needs INTERNAL_API_TOKEN and WORKER_TOKEN in
+#                                the environment (or a root .env file): Compose interpolates the whole file whether or not a
+#                                profile is on, so they cannot be required here without breaking `pnpm dev`; the API, which runs
+#                                in production mode, refuses the public example values below and stops with a message instead.
+#                                For the worker to find the API, BACKEND_URL=http://api:4100.
+# What the worker downloads stays on the `worker-data` volume, inside Docker. `pnpm worker:clean` removes all of it.
+
+# Logs are rotated: without a cap, Docker keeps every line, and the access log of a busy month fills the disk.
+x-logging: &logging
+    driver: json-file
+    options:
+        max-size: 10m
+        max-file: '3'
+
+# Every container: a read-only root filesystem (only its volume and /tmp take writes), no Linux capabilities (all run as
+# an unprivileged user on ports above 1024), no privilege gain through setuid binaries, and a cap on processes.
+x-hardening: &hardening
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ['no-new-privileges:true']
 
 services:
     worker:
@@ -7,23 +30,22 @@ services:
             context: .
             target: worker
         restart: unless-stopped
-        logging:
-            driver: json-file
-            options:
-                max-size: 10m
-                max-file: '3'
-        # A read-only root filesystem (only its volume and /tmp take writes), no Linux capabilities, no privilege gain
-        # through setuid binaries, and a cap on memory and processes: a package is untrusted input.
-        read_only: true
-        cap_drop: [ALL]
-        security_opt: ['no-new-privileges:true']
+        # Node runs as PID 1 here and does not reap processes it did not start: a killed analysis leaves pnpm's children
+        # behind as zombies, which would count against pids_limit for ever. An init process reaps them.
+        init: true
+        logging: *logging
+        <<: *hardening
+        # A package is untrusted input: on top of the hardening, a cap on memory and processors.
+        # The memory must hold WORKER_CONCURRENCY analyses of JOB_MEMORY_MB each (defaults: one of 2 GB) and the worker.
         mem_limit: 3g
+        cpus: 2
         pids_limit: 512
         tmpfs: ['/tmp:size=512m']
         environment:
             LOG_LEVEL: ${LOG_LEVEL:-info}
             # The backend runs on the machine itself during development (`pnpm dev`). On Linux it must listen on more than
             # 127.0.0.1 for this to reach it (HOST in apps/backend/.env); Docker Desktop on a Mac needs nothing.
+            # With the `app` profile, the API is a container: BACKEND_URL=http://api:4100.
             BACKEND_URL: ${BACKEND_URL:-http://host.docker.internal:4100}
             # The value in apps/backend/.env.example, which production refuses. Another value there needs the same one here.
             WORKER_TOKEN: ${WORKER_TOKEN:-local-development-only-not-a-secret}
@@ -32,5 +54,67 @@ services:
         volumes:
             - worker-data:/work
 
+    # The API: the store of measurements and the queue the worker takes jobs from. Production settings, so the tokens must be real ones.
+    api:
+        profiles: [app]
+        build:
+            context: .
+            target: backend
+            args:
+                # The commit being deployed, reported by /v1/health.
+                APP_VERSION: ${APP_VERSION:-dev}
+        restart: unless-stopped
+        logging: *logging
+        <<: *hardening
+        # SQLite puts the temporary files of large sorts here; the database itself is on the volume.
+        tmpfs: ['/tmp:size=256m']
+        mem_limit: 1g
+        pids_limit: 256
+        environment:
+            NODE_ENV: production
+            LOG_LEVEL: ${LOG_LEVEL:-info}
+            CORS_ORIGINS: ${SITE_URL:-http://localhost:3100}
+            # The worker proves itself with this (same value above). The example value is refused in production: set a real one.
+            WORKER_TOKEN: ${WORKER_TOKEN:-local-development-only-not-a-secret}
+            # The frontend's server sends this (same value below), so the API limits its rendering per visitor, not as one caller.
+            # The example value is refused in production: set a random string of at least 32 characters.
+            INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:-local-development-only-render-token-not-a-secret}
+            # Behind a proxy, count callers by the address it reports instead of by the proxy's.
+            CLIENT_IP_HEADER: ${CLIENT_IP_HEADER:-}
+            # Optional: GitHub allows 60 questions an hour without it, for the stars in the trends table.
+            GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+        volumes:
+            - api-data:/data
+        # This machine only (for a local run, or `curl` on the server): the internet reaches the API through a reverse proxy or a tunnel.
+        ports:
+            - '127.0.0.1:4100:4100'
+
+    frontend:
+        profiles: [app]
+        build:
+            context: .
+            target: frontend
+            args:
+                VITE_API_URL: ${API_URL:-http://localhost:4100}
+                VITE_SITE_URL: ${SITE_URL:-http://localhost:3100}
+                VITE_ALLOW_INDEXING: ${ALLOW_INDEXING:-false}
+        restart: unless-stopped
+        logging: *logging
+        <<: *hardening
+        tmpfs: ['/tmp:size=64m']
+        mem_limit: 512m
+        pids_limit: 256
+        environment:
+            API_INTERNAL_URL: http://api:4100
+            INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:-local-development-only-render-token-not-a-secret}
+            # The visitor's address the frontend passes on to the API, which limits its rendering per visitor.
+            CLIENT_IP_HEADER: ${CLIENT_IP_HEADER:-}
+        depends_on:
+            api:
+                condition: service_healthy
+        ports:
+            - '127.0.0.1:3100:3100'
+
 volumes:
     worker-data:
+    api-data:

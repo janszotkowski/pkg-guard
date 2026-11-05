@@ -5,14 +5,18 @@
  * - every dependency in every package.json is an exact version (no ^, ~, ranges, tags),
  *   except workspace links
  * - the package manager and the runtime are pinned and agree with each other
- * - pnpm-workspace.yaml keeps the 7-day release age, exact saving and strict engines
- * - the Dockerfile uses the same Node and pnpm versions, and its base images are pinned by digest
+ * - pnpm-workspace.yaml keeps the 7-day release age, exact saving, strict engines, registry-only transitive
+ *   dependencies, strict install scripts and exact overrides
+ * - the Dockerfile uses the same Node and pnpm versions (pnpm through Corepack, or `npm install --global pnpm@x.y.z`),
+ *   and its base images are pinned by digest
+ * - every image docker-compose.yml pulls is pinned by digest
  * - every GitHub Action is pinned to a full commit SHA
  */
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const root = new URL('..', import.meta.url).pathname;
+const root = fileURLToPath(new URL('..', import.meta.url));
 const problems = [];
 
 const read = (path) => readFileSync(join(root, path), 'utf8');
@@ -65,8 +69,35 @@ if (existsSync(join(root, 'Dockerfile'))) {
         const node = /^node:(\d+\.\d+\.\d+)-/.exec(image);
         if (node !== null && node[1] !== nodeVersionFile) problems.push(`Dockerfile: base image is Node ${node[1]} but .node-version is "${nodeVersionFile}"`);
     }
-    const pnpm = /npm install --global pnpm@(\S+)/.exec(dockerfile);
-    if (pnpm === null || pnpm[1] !== packageManagerVersion) problems.push(`Dockerfile: installs pnpm@${pnpm?.[1] ?? '?'} but packageManager is "${packageManager}"`);
+    // pnpm comes either through Corepack, which reads (and verifies) the version from package.json's `packageManager`
+    // and needs the manifest copied in first, or from npm with the version written out, which must then be the same one.
+    const corepack = /\bcorepack\s+(?:enable\b.*&&\s*corepack\s+)?install\b/.test(dockerfile);
+    const copiesManifest = /^COPY\s+(?:--\S+\s+)*package\.json\b/m.test(dockerfile);
+    const pnpm = [...dockerfile.matchAll(/npm install --global pnpm@(\S+)/g)].map((match) => match[1]);
+    if (corepack) {
+        if (!copiesManifest) problems.push('Dockerfile: installs pnpm through Corepack but never copies package.json, which carries the version it installs');
+        if (!packageManager.includes('+sha512.'))
+            problems.push("Dockerfile: installs pnpm through Corepack, so package.json's packageManager needs the +sha512 hash Corepack verifies the download with");
+    } else if (pnpm.length === 0) {
+        problems.push('Dockerfile: installs pnpm neither through Corepack nor with `npm install --global pnpm@x.y.z`');
+    }
+    for (const version of pnpm) {
+        if (version !== packageManagerVersion) problems.push(`Dockerfile: installs pnpm@${version} but packageManager is "${packageManager}"`);
+    }
+}
+
+// Images Compose pulls (not the ones it builds here) are pinned by digest: a re-pushed tag cannot change what runs.
+for (const file of ['docker-compose.yml', 'docker-compose.yaml', 'compose.yml', 'compose.yaml']) {
+    if (!existsSync(join(root, file))) continue;
+    read(file)
+        .split('\n')
+        .forEach((line, index) => {
+            const image = /^\s*image:\s*['"]?([^'"#\s]+)/.exec(line);
+            if (image === null) return;
+            // A service that is built here names its image to share it with another service; it comes from no registry.
+            if (!image[1].includes('/') && !image[1].includes(':') && !image[1].includes('@')) return;
+            if (!/@sha256:[0-9a-f]{64}$/.test(image[1])) problems.push(`${file}:${index + 1}: image "${image[1]}" is not pinned by digest`);
+        });
 }
 
 // 3. pnpm's own settings.
@@ -75,6 +106,15 @@ const releaseAge = /^minimumReleaseAge:\s*(\d+)\s*$/m.exec(workspace);
 if (releaseAge === null || Number(releaseAge[1]) < 10080) problems.push('pnpm-workspace.yaml: minimumReleaseAge must be at least 10080 (7 days)');
 if (!/^savePrefix:\s*(""|'')\s*$/m.test(workspace)) problems.push('pnpm-workspace.yaml: savePrefix must be ""');
 if (!/^engineStrict:\s*true\s*$/m.test(workspace)) problems.push('pnpm-workspace.yaml: engineStrict must be true');
+if (!/^blockExoticSubdeps:\s*true\s*$/m.test(workspace)) problems.push('pnpm-workspace.yaml: blockExoticSubdeps must be true (transitive dependencies from the registry only)');
+if (!/^strictDepBuilds:\s*true\s*$/m.test(workspace)) problems.push('pnpm-workspace.yaml: strictDepBuilds must be true (an unlisted install script fails the install)');
+// An override is a version too: a range there would reopen what the exact versions close.
+const overrides = /^overrides:\s*\n((?:[ \t]+\S.*\n?)*)/m.exec(workspace)?.[1] ?? '';
+for (const line of overrides.split('\n')) {
+    const entry = /^\s+(['"]?)(\S+?)\1:\s*(['"]?)([^'"#]*?)\3\s*(?:#.*)?$/.exec(line);
+    if (entry === null) continue;
+    if (!entry[4].startsWith('workspace:') && !EXACT_VERSION.test(entry[4])) problems.push(`pnpm-workspace.yaml: overrides.${entry[2]} is "${entry[4]}", not an exact version`);
+}
 
 // 4. Every action in every workflow is pinned to a full commit SHA.
 const workflowDir = join(root, '.github/workflows');
@@ -94,4 +134,4 @@ if (problems.length > 0) {
     process.stderr.write(`Policy check failed:\n${problems.map((problem) => `  - ${problem}`).join('\n')}\n`);
     process.exit(1);
 }
-process.stdout.write(`Policy check passed (${packageFiles.length} manifests, pnpm-workspace.yaml, workflows).\n`);
+process.stdout.write(`Policy check passed (${packageFiles.length} manifests, pnpm-workspace.yaml, Dockerfile, Compose, workflows).\n`);

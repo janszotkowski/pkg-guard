@@ -29,7 +29,11 @@
         "format": "oxfmt",
         "format:check": "oxfmt --check",
         "policy": "node tools/check-policy.js",
-        "verify": "pnpm policy && pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm build"
+        "smoke": "node tools/smoke.js",
+        "e2e": "pnpm --filter @pkg-guard/e2e test:e2e",
+        "stack": "docker compose --profile app up --build",
+        "stack:down": "docker compose --profile app down",
+        "verify": "pnpm policy && pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm build && pnpm smoke"
     },
     "devDependencies": {
         "oxfmt": "0.75.0",
