@@ -206,6 +206,12 @@ try {
         expect((await response.text()).startsWith('<svg'), 'the body is not an SVG');
     });
 
+    await check('backend: the API describes itself in OpenAPI', async () => {
+        const response = await fetch(`${backend}/v1/openapi.json`);
+        expect(response.status === 200, `got ${response.status}`);
+        expect((await response.json()).openapi === '3.1.0', 'not an OpenAPI 3.1 document');
+    });
+
     await check('backend: the MCP endpoint answers a client and refuses a page elsewhere', async () => {
         const initialize = { jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'smoke', version: '1.0.0' } } };
         const request = (headers) =>

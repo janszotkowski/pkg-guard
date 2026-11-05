@@ -7,6 +7,7 @@ import {
     TREND_RANGES,
     isComplete,
     isExactVersion,
+    openApiDocument,
     parseSpec,
     type AnalysisResponse,
     type HistoryResponse,
@@ -78,9 +79,16 @@ const readJson = async (c: Context<AppEnv>): Promise<unknown> => {
 };
 
 /** The public API: what a package costs. */
-export const analysisRoutes = (deps: AnalysisDeps): Hono<AppEnv> => {
+export const analysisRoutes = (deps: AnalysisDeps, options: { rateLimitPerMinute: number }): Hono<AppEnv> => {
     const { store, resolve, search, listVersions, readDownloads, readStars, readMetadata } = deps;
     const routes = new Hono<AppEnv>();
+
+    // The contract for generated clients; it changes only with a deployment.
+    const openApi = openApiDocument({ rateLimitPerMinute: options.rateLimitPerMinute });
+    routes.get('/openapi.json', (c) => {
+        c.header('cache-control', 'public, max-age=3600, s-maxage=3600');
+        return c.json(openApi);
+    });
 
     const history = async (name: string): Promise<HistoryResponse> => ({
         name,

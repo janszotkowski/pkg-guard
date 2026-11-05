@@ -120,6 +120,23 @@ describe('the public API', () => {
         expect((await app.request('/v1/health')).headers.get('cache-control')).toBe('no-store');
     });
 
+    it('describes itself in OpenAPI, every path of which answers', async () => {
+        const { app } = setup({ RATE_LIMIT_PER_MINUTE: '77' });
+        const response = await app.request('/v1/openapi.json');
+        expect(response.status).toBe(200);
+        expect(response.headers.get('cache-control')).toContain('max-age=3600');
+        const document = (await response.json()) as { openapi: string; info: { description: string }; paths: Record<string, Record<string, unknown>> };
+        expect(document.openapi).toBe('3.1.0');
+        expect(document.info.description).toContain('77 requests per minute');
+        for (const [path, operations] of Object.entries(document.paths)) {
+            for (const method of Object.keys(operations)) {
+                const answered = await app.request(`/v1${path}`, { method: method.toUpperCase() });
+                expect(answered.status, `${method} ${path}`).toBeLessThan(500);
+                expect(answered.status, `${method} ${path}`).not.toBe(404);
+            }
+        }
+    });
+
     it('answers 304 to a caller that still has the answer, keeping the headers about the answer itself', async () => {
         const { app } = setup({ RATE_LIMIT_PER_MINUTE: '10' });
         const first = await app.request('/v1/search?q=react', { headers: { origin: 'http://localhost:3100' } });
