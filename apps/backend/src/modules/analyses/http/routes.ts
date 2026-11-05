@@ -10,6 +10,7 @@ import {
     parseSpec,
     type AnalysisResponse,
     type HistoryResponse,
+    type PackageSpec,
     type VersionEntry,
 } from '@pkg-guard/core';
 import { Hono, type Context } from 'hono';
@@ -48,6 +49,16 @@ const versionEntry = (released: ReleasedVersion, known: AnalysisResponse | undef
     if (known === undefined) return { version, publishedAt, status: 'unmeasured', gzip: null, minified: null };
     const sizes = known.status === 'done' ? known.result.sizes : null;
     return { version, publishedAt, status: known.status, gzip: sizes?.gzip ?? null, minified: sizes?.minified ?? null };
+};
+
+/**
+ * A package's analysis, queued when there is none. An exact version already in the store needs no question to the
+ * registry: polling costs it nothing. A failed one is asked about again, so that a version taken off npm meanwhile is not queued once more.
+ */
+export const lookUpAnalysis = async (deps: Pick<AnalysisDeps, 'store' | 'resolve'>, spec: PackageSpec): Promise<AnalysisResponse> => {
+    const exact = spec.version !== undefined && isExactVersion(spec.version) ? spec.version : undefined;
+    const known = exact === undefined ? undefined : deps.store.find({ name: spec.name, version: exact });
+    return known === undefined || known.status === 'failed' ? deps.store.findOrEnqueue({ name: spec.name, version: await deps.resolve(spec.name, spec.version ?? 'latest') }) : known;
 };
 
 /** A name without a version, from the `package` parameter. */
@@ -103,10 +114,7 @@ export const analysisRoutes = (deps: AnalysisDeps): Hono<AppEnv> => {
             return c.json(found);
         }
 
-        // An exact version already in the store needs no question to the registry: polling costs it nothing. A failed one
-        // is asked about again, so that a version taken off npm meanwhile is not queued once more.
-        const known = exact === undefined ? undefined : store.find({ name: spec.name, version: exact });
-        const answer = known === undefined || known.status === 'failed' ? store.findOrEnqueue({ name: spec.name, version: await resolve(spec.name, spec.version ?? 'latest') }) : known;
+        const answer = await lookUpAnalysis(deps, spec);
 
         // What a tag points to changes with the next release; the result of an exact version does not.
         c.header('cache-control', isComplete(answer) ? (exact === undefined ? SHORT_CACHE : EXACT_CACHE) : 'no-store');

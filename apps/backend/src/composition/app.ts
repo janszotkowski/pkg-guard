@@ -1,5 +1,6 @@
 import type { Hono } from 'hono';
 import type { Config } from '@config/env.ts';
+import { mcpRoutes } from '@modules/analyses/http/mcp.ts';
 import { analysisRoutes, workerRoutes, type AnalysisDeps } from '@modules/analyses/http/routes.ts';
 import { createBaseApp, type AppEnv } from '@platform/http/app.ts';
 import type { Logger } from '@platform/logger.ts';
@@ -17,6 +18,17 @@ export const createApp = (container: Container): Hono<AppEnv> => {
         c.header('cache-control', 'no-store');
         return c.json({ status: 'ok' as const, version: container.config.APP_VERSION });
     });
+    app.route(
+        '/v1/mcp',
+        mcpRoutes({
+            store: container.store,
+            resolve: container.resolve,
+            readMetadata: container.readMetadata,
+            logger: container.logger,
+            corsOrigins: container.config.CORS_ORIGINS,
+            version: container.config.APP_VERSION,
+        }),
+    );
     app.route('/v1', analysisRoutes(container));
     app.route('/internal', workerRoutes(container.store, container.config.WORKER_TOKEN));
     return app;

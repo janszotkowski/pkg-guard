@@ -26,6 +26,14 @@ export const aiCatalog = (): string => {
                 representativeQueries: ['measured gzip size of react as JSON', 'size of each release of lodash', 'weekly downloads of vue over the last year', 'is this npm version deprecated'],
             },
             {
+                identifier: id('mcp', 'packages'),
+                displayName: `${siteConfig.title} MCP server`,
+                description: 'Model Context Protocol server (Streamable HTTP, no key): what an npm package costs a bundle and what the registry says of a version.',
+                type: 'application/json',
+                url: `${API_URL}/v1/mcp`,
+                representativeQueries: ['what does this dependency cost before I add it', 'is this npm package deprecated'],
+            },
+            {
                 identifier: id('document', 'llms'),
                 displayName: `${siteConfig.title} for language models`,
                 description: 'What the site is, how its numbers are made, where its data comes from, its pages and its public read-only JSON API.',

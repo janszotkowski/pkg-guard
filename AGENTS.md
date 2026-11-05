@@ -15,7 +15,7 @@ Rules for coding agents, and for people. Most are enforced by `pnpm verify`; the
 
 ## What the repository is
 
-A pnpm workspace with Turborepo: `apps/backend` (Hono API over SQLite, the job queue), `apps/worker` (the analyzer, runs only in Docker), `apps/frontend` (TanStack Start, server-rendered), `apps/cli` (the command line), `apps/e2e` (Playwright) and `packages/core` (the shared contract, zod/mini). The backend, the worker, the CLI and core are plain Node ESM in TypeScript; the frontend is React 19.
+A pnpm workspace with Turborepo: `apps/backend` (Hono API over SQLite, the job queue, the MCP server), `apps/worker` (the analyzer, runs only in Docker), `apps/frontend` (TanStack Start, server-rendered), `apps/cli` (the command line), `apps/e2e` (Playwright) and `packages/core` (the shared contract, zod/mini). The backend, the worker, the CLI and core are plain Node ESM in TypeScript; the frontend is React 19.
 
 ## Before you change anything
 

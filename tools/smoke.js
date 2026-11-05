@@ -205,6 +205,22 @@ try {
         expect(response.status === 200 && response.headers.get('content-type')?.startsWith('image/svg+xml'), `got ${response.status} ${response.headers.get('content-type')}`);
         expect((await response.text()).startsWith('<svg'), 'the body is not an SVG');
     });
+
+    await check('backend: the MCP endpoint answers a client and refuses a page elsewhere', async () => {
+        const initialize = { jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'smoke', version: '1.0.0' } } };
+        const request = (headers) =>
+            fetch(`${backend}/v1/mcp`, {
+                method: 'POST',
+                headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream', ...headers },
+                body: JSON.stringify(initialize),
+            });
+        const response = await request({});
+        expect(response.status === 200, `got ${response.status}`);
+        // JSON or one server-sent event, as the protocol revision has it: either way, the text names the server.
+        expect((await response.text()).includes('"name":"pkg-guard"'), 'the server does not name itself');
+        const foreign = await request({ origin: 'https://evil.example' });
+        expect(foreign.status === 403, `a foreign origin got ${foreign.status}`);
+    });
 } catch (error) {
     failures.push(error.message);
     process.stderr.write(`Smoke test could not run: ${error.message}\n`);
