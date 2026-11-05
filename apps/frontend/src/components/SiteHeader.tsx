@@ -21,7 +21,8 @@ export const SiteHeader = () => {
                         aria-hidden={'true'}
                         className={'size-5 text-link'}
                     />
-                    <span className={home ? undefined : 'hidden sm:inline'}>{siteConfig.title}</span>
+                    {/* Out of sight on a phone beside the search, but still the link's name. */}
+                    <span className={home ? undefined : 'sr-only sm:not-sr-only'}>{siteConfig.title}</span>
                 </Link>
                 <div className={'flex min-w-0 flex-1 items-center justify-end gap-1'}>
                     {!home && (

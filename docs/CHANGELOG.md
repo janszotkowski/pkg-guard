@@ -26,6 +26,8 @@ API releases carry the version of the `/v1` contract; how it is versioned is at 
 - A how-it-works page, and navigation in the header and the footer, with one menu on a phone.
 - The package health panel: deprecation, license, TypeScript types, module format, last release and install scripts.
 - This changelog, and an invitation to star the project on GitHub.
+- On a phone, the link with the logo has a name for screen readers.
+- Links in the documents are underlined, not only coloured.
 
 ### Command line and self-hosting
 
