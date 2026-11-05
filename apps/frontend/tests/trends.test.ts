@@ -1,5 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { groupDownloads, monthTicks, parsePackages, repositoryOf, trendsView, validateTrendsSearch, weeklyDownloads } from '@lib/trends';
+import { ApiError, pollInterval } from '@lib/api';
+import {
+    assignColors,
+    groupDownloads,
+    measuringText,
+    monthTicks,
+    packageState,
+    parsePackages,
+    repositoryOf,
+    todayIso,
+    trendsView,
+    validateTrendsSearch,
+    versionRows,
+    weeklyDownloads,
+} from '@lib/trends';
 
 const days = (start: string, count: number, downloads = 1) =>
     Array.from({ length: count }, (_, index) => ({ day: new Date(Date.parse(start) + index * 86_400_000).toISOString().slice(0, 10), downloads }));
@@ -78,5 +92,109 @@ describe('monthTicks', () => {
         expect(monthTicks(from, to, 3000).length).toBe(36);
         expect(monthTicks(from, to, 2000).length).toBe(18);
         expect(monthTicks(from, to, 400).length).toBeLessThanOrEqual(5);
+    });
+});
+
+describe('versionRows', () => {
+    it('plots the measured, dated versions oldest first and leaves the others out', () => {
+        const rows = versionRows('react', [
+            { version: '3.0.0', publishedAt: '2026-03-01T00:00:00.000Z', status: 'queued', gzip: null, minified: null },
+            { version: '2.0.0', publishedAt: '2026-02-01T00:00:00.000Z', status: 'done', gzip: 20, minified: 40 },
+            { version: '1.5.0', publishedAt: null, status: 'done', gzip: 15, minified: 30 },
+            { version: '1.0.0', publishedAt: '2026-01-01T00:00:00.000Z', status: 'done', gzip: 10, minified: 20 },
+        ]);
+        expect(rows).toEqual([
+            { name: 'react', time: Date.parse('2026-01-01T00:00:00.000Z'), value: 10, detail: '1.0.0' },
+            { name: 'react', time: Date.parse('2026-02-01T00:00:00.000Z'), value: 20, detail: '2.0.0' },
+        ]);
+    });
+});
+
+describe('measuringText', () => {
+    it('counts the versions still on their way, and says nothing once they all are measured', () => {
+        expect(measuringText(0)).toBe('');
+        expect(measuringText(1)).toBe('Measuring 1 more version…');
+        expect(measuringText(3)).toBe('Measuring 3 more versions…');
+    });
+});
+
+describe('todayIso', () => {
+    it('is a day in UTC', () => {
+        expect(todayIso()).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    });
+});
+
+describe('assignColors', () => {
+    const palette = ['one', 'two', 'three', 'four'];
+
+    it('hands the colors out in order', () => {
+        expect([...assignColors(['a', 'b', 'c'], new Map(), palette)]).toEqual([
+            ['a', 'one'],
+            ['b', 'two'],
+            ['c', 'three'],
+        ]);
+    });
+
+    it('keeps the colors of the packages that stay when one goes', () => {
+        const before = assignColors(['a', 'b', 'c'], new Map(), palette);
+        const after = assignColors(['a', 'c'], before, palette);
+        expect([...after]).toEqual([
+            ['a', 'one'],
+            ['c', 'three'],
+        ]);
+    });
+
+    it('gives a new package the first color nobody has', () => {
+        const before = assignColors(
+            ['a', 'c'],
+            new Map([
+                ['a', 'one'],
+                ['c', 'three'],
+            ]),
+            palette,
+        );
+        expect(assignColors(['a', 'c', 'd'], before, palette).get('d')).toBe('two');
+    });
+
+    it('falls back to the first color once the palette is used up', () => {
+        expect(assignColors(['a', 'b', 'c'], new Map(), ['one', 'two']).get('c')).toBe('one');
+    });
+});
+
+describe('packageState', () => {
+    it('says why there are no sizes, and nothing when there are', () => {
+        expect(packageState(undefined, new ApiError('NOT_FOUND', 'no'))).toBe('Not on npm');
+        expect(packageState(undefined, new Error('down'))).toBe('Could not be loaded');
+        expect(packageState(undefined, undefined)).toBe('Measuring…');
+    });
+});
+
+describe('pollInterval', () => {
+    const query = (status: 'success' | 'error', dataUpdateCount: number, errorUpdateCount: number) => ({ state: { status, dataUpdateCount, errorUpdateCount } }) as const;
+
+    it('asks again at the normal pace while the answers come, and not at all once there is nothing to wait for', () => {
+        const polled = { state: { status: 'success' as const, dataUpdateCount: 1, errorUpdateCount: 0 } };
+        expect(pollInterval(polled, 1000)).toBe(1000);
+        expect(pollInterval(polled, false)).toBe(false);
+    });
+
+    it('slows down once a fetch has failed, stops after six failures in a row, and recovers with the next answer', () => {
+        const polled = { state: { status: 'success' as const, dataUpdateCount: 1, errorUpdateCount: 0 } as (typeof query extends (...args: never[]) => infer R ? R : never)['state'] };
+        expect(pollInterval(polled, 1000)).toBe(1000);
+        for (let failures = 1; failures <= 5; failures++) {
+            polled.state = { status: 'error', dataUpdateCount: 1, errorUpdateCount: failures };
+            expect(pollInterval(polled, 1000), `${failures} failures`).toBe(5000);
+        }
+        polled.state = { status: 'error', dataUpdateCount: 1, errorUpdateCount: 6 };
+        expect(pollInterval(polled, 1000)).toBe(false);
+        polled.state = { status: 'success', dataUpdateCount: 2, errorUpdateCount: 6 };
+        expect(pollInterval(polled, 1000)).toBe(1000);
+    });
+
+    it('counts the failures of each query on its own', () => {
+        const one = query('error', 1, 3);
+        const other = query('success', 1, 3);
+        expect(pollInterval(one, 1000)).toBe(5000);
+        expect(pollInterval(other, 1000)).toBe(1000);
     });
 });

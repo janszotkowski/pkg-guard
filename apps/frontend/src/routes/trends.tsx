@@ -1,101 +1,35 @@
-import { parseSpec, type AnalysisResponse, type HistoryResponse, type TrendRange } from '@pkg-guard/core';
 import { keepPreviousData, useQueries } from '@tanstack/react-query';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { Check, Link2, LoaderCircle, X } from 'lucide-react';
+import { LoaderCircle } from 'lucide-react';
 import { useCallback, useDeferredValue, useMemo, useState } from 'react';
 import { IsoPackage } from '@components/iso/IsoPackage';
-import { PackageSearch } from '@components/PackageSearch';
-import { SegmentedControl } from '@components/SegmentedControl';
-import { TrendsChart, type TrendRow } from '@components/TrendsChart';
+import { PackageChips, type ChipFocus } from '@components/PackageChips';
+import { TrendsChart } from '@components/TrendsChart';
+import { TrendsControls } from '@components/TrendsControls';
 import { TrendsTable, type TrendsTableRow } from '@components/TrendsTable';
-import { Button } from '@components/ui/button';
 import { siteConfig } from '@config/site';
+import { publicPage } from '@lib/documents/pages';
 import { pageHead } from '@lib/head';
-import { ApiError, analysisQuery, downloadsQuery, historyQuery, starsQuery } from '@lib/api';
+import { analysisQuery, downloadsQuery, historyQuery, starsQuery } from '@lib/api';
 import { useMeasureOnce } from '@lib/useMeasureOnce';
+import { useSeriesColors } from '@lib/useSeriesColors';
 import { formatCount, formatSizeText } from '@lib/format';
-import { MAX_TREND_PACKAGES, groupDownloads, parsePackages, repositoryOf, trendsView, validateTrendsSearch, weeklyDownloads, type TrendGroup, type TrendMetric, type TrendsSearch } from '@lib/trends';
-
-const SERIES_COLORS = ['var(--series-1)', 'var(--series-2)', 'var(--series-3)', 'var(--series-4)'] as const;
-
-const METRICS: readonly { value: TrendMetric; label: string }[] = [
-    { value: 'size', label: 'Size' },
-    { value: 'downloads', label: 'Downloads' },
-];
-const RANGES: readonly { value: TrendRange; label: string }[] = [
-    { value: '2m', label: '2M' },
-    { value: '1y', label: '1Y' },
-    { value: '3y', label: '3Y' },
-];
-const GROUPS: readonly { value: TrendGroup; label: string }[] = [
-    { value: 'day', label: 'Day' },
-    { value: 'week', label: 'Week' },
-    { value: 'month', label: 'Month' },
-];
-
-const today = (): string => new Date().toISOString().slice(0, 10);
-
-/** A color stays with its package when others are removed; a new package takes the first color nobody has. */
-const assignColors = (packages: readonly string[], previous: ReadonlyMap<string, string>): ReadonlyMap<string, string> => {
-    const next = new Map([...previous].filter(([name]) => packages.includes(name)));
-    for (const name of packages) {
-        if (next.has(name)) continue;
-        const taken = new Set(next.values());
-        next.set(name, SERIES_COLORS.find((color) => !taken.has(color)) ?? SERIES_COLORS[0]);
-    }
-    return next;
-};
-
-/** Removing one package must not repaint the others, so the colors outlive a change of the list while the page is open. */
-const useSeriesColors = (packages: readonly string[]): ReadonlyMap<string, string> => {
-    const [colors, setColors] = useState<ReadonlyMap<string, string>>(() => assignColors(packages, new Map()));
-    const key = packages.join();
-    const [seenKey, setSeenKey] = useState(key);
-    if (key === seenKey) return colors;
-    const next = assignColors(packages, colors);
-    setSeenKey(key);
-    setColors(next);
-    return next;
-};
-
-const stateOf = (data: AnalysisResponse | undefined, error: unknown): string | undefined => {
-    if (error instanceof ApiError && error.code === 'NOT_FOUND') return 'Not on npm';
-    if (error !== null && error !== undefined) return 'Could not be loaded';
-    if (data === undefined || data.status === 'queued' || data.status === 'running') return 'Measuring…';
-    if (data.status === 'failed') return 'Could not be measured';
-    return data.result.sizes === null ? 'Nothing to import' : undefined;
-};
-
-const sizeRows = (histories: readonly (HistoryResponse | undefined)[]): TrendRow[] =>
-    histories
-        .flatMap((history) =>
-            (history?.versions ?? []).flatMap((entry): TrendRow[] =>
-                entry.gzip === null || entry.publishedAt === null ? [] : [{ name: history?.name ?? '', time: Date.parse(entry.publishedAt), value: entry.gzip, detail: entry.version }],
-            ),
-        )
-        .sort((a, b) => a.time - b.time);
-
-const CopyLink = () => {
-    const [copied, setCopied] = useState(false);
-    const Icon = copied ? Check : Link2;
-    return (
-        <Button
-            variant={'secondary'}
-            onClick={() => {
-                void navigator.clipboard.writeText(location.href).then(() => {
-                    setCopied(true);
-                    setTimeout(() => setCopied(false), 2000);
-                });
-            }}
-        >
-            <Icon
-                aria-hidden={'true'}
-                className={'size-4'}
-            />
-            {copied ? 'Copied' : 'Copy link'}
-        </Button>
-    );
-};
+import {
+    MAX_TREND_PACKAGES,
+    SERIES_COLORS,
+    groupDownloads,
+    measuringText,
+    packageState,
+    parsePackages,
+    repositoryOf,
+    todayIso,
+    trendsView,
+    validateTrendsSearch,
+    versionRows,
+    weeklyDownloads,
+    type TrendRow,
+    type TrendsSearch,
+} from '@lib/trends';
 
 const TrendsPage = () => {
     const search = Route.useSearch();
@@ -103,6 +37,8 @@ const TrendsPage = () => {
     const view = useMemo(() => trendsView(search), [search]);
     const { packages, metric, range, group } = view;
     const colors = useSeriesColors(packages);
+    const [chipFocus, setChipFocus] = useState<ChipFocus | undefined>(undefined);
+    const clearChipFocus = useCallback(() => setChipFocus(undefined), []);
 
     const change = (next: TrendsSearch) => {
         void navigate({ search: (current) => validateTrendsSearch({ ...current, ...next }), resetScroll: false, replace: true });
@@ -113,7 +49,27 @@ const TrendsPage = () => {
         },
         [navigate],
     );
-    const remove = useCallback((name: string) => setPackages(packages.filter((candidate) => candidate !== name)), [packages, setPackages]);
+    const remove = useCallback(
+        (name: string) => {
+            // The button pressed goes with its chip: the keyboard moves to the chip after it, the one before it, or the field when none is left.
+            const index = packages.indexOf(name);
+            const rest = packages.filter((candidate) => candidate !== name);
+            const next = rest[index] ?? rest[index - 1];
+            setChipFocus(next === undefined ? { kind: 'search' } : { kind: 'chip', name: next });
+            setPackages(rest);
+        },
+        [packages, setPackages],
+    );
+    const add = useCallback(
+        (name: string) => {
+            if (packages.includes(name)) return;
+            const next = [...packages, name];
+            // The field makes way for the last chip, so the keyboard would otherwise be left on nothing.
+            if (next.length === MAX_TREND_PACKAGES) setChipFocus({ kind: 'chip', name });
+            setPackages(next);
+        },
+        [packages, setPackages],
+    );
 
     const analyses = useQueries({ queries: packages.map((name) => analysisQuery(name)) });
     const recentDownloads = useQueries({ queries: packages.map((name) => downloadsQuery(name, '2m')) });
@@ -134,10 +90,11 @@ const TrendsPage = () => {
 
     useMeasureOnce(histories.data, metric === 'size');
 
-    const now = today();
+    // Read once, so that the server and the browser do not disagree within one pass.
+    const [now] = useState(todayIso);
 
     const rows = useMemo<TrendRow[]>(() => {
-        if (metric === 'size') return sizeRows(histories.data);
+        if (metric === 'size') return histories.data.flatMap((history) => (history === undefined ? [] : versionRows(history.name, history.versions))).sort((a, b) => a.time - b.time);
         return rangeDownloads.data.flatMap((data) => (data === undefined ? [] : groupDownloads(data.days, group, now).map((point) => ({ name: data.name, ...point }))));
     }, [metric, group, now, histories.data, rangeDownloads.data]);
 
@@ -163,24 +120,28 @@ const TrendsPage = () => {
     const fetching = metric === 'size' ? histories.pending : rangeDownloads.pending;
     const loading = fetching || drawn !== chart;
 
-    const tableRows: TrendsTableRow[] = packages.map((name, index) => {
-        const analysis = analyses[index];
-        const data = analysis?.data;
-        const result = data?.status === 'done' ? data.result : undefined;
-        const days = recentDownloads[index]?.data?.days;
-        return {
-            name,
-            version: data?.package.version,
-            color: colors.get(name) ?? SERIES_COLORS[0],
-            state: stateOf(data, analysis?.error),
-            gzip: result?.sizes?.gzip,
-            minified: result?.sizes?.minified,
-            install: result?.install.bytes,
-            weekly: days === undefined ? undefined : weeklyDownloads(days, now),
-            stars: stars[index]?.data?.stars ?? undefined,
-            repositoryUrl: result?.repositoryUrl ?? undefined,
-        };
-    });
+    const tableRows = useMemo<TrendsTableRow[]>(
+        () =>
+            packages.map((name, index) => {
+                const analysis = analyses[index];
+                const data = analysis?.data;
+                const result = data?.status === 'done' ? data.result : undefined;
+                const days = recentDownloads[index]?.data?.days;
+                return {
+                    name,
+                    version: data?.package.version,
+                    color: colors.get(name) ?? SERIES_COLORS[0],
+                    state: packageState(data, analysis?.error),
+                    gzip: result?.sizes?.gzip,
+                    minified: result?.sizes?.minified,
+                    install: result?.install.bytes,
+                    weekly: days === undefined ? undefined : weeklyDownloads(days, now),
+                    stars: stars[index]?.data?.stars ?? undefined,
+                    repositoryUrl: result?.repositoryUrl ?? undefined,
+                };
+            }),
+        [packages, analyses, recentDownloads, stars, colors, now],
+    );
 
     return (
         <main
@@ -193,46 +154,14 @@ const TrendsPage = () => {
                 <p className={'max-w-2xl text-callout text-muted-foreground'}>Compare size and downloads across up to {MAX_TREND_PACKAGES} packages.</p>
             </div>
 
-            <div className={'flex flex-wrap items-center gap-2'}>
-                {packages.map((name) => (
-                    <span
-                        key={name}
-                        className={'inline-flex min-h-10 items-center gap-2 rounded-4xl bg-muted pr-1.5 pl-3.5 font-mono text-code'}
-                    >
-                        <span
-                            aria-hidden={'true'}
-                            className={'size-2.5 rounded-xs'}
-                            style={{ background: colors.get(name) }}
-                        />
-                        {name}
-                        <button
-                            type={'button'}
-                            aria-label={`Remove ${name}`}
-                            onClick={() => remove(name)}
-                            className={
-                                'inline-flex size-7 items-center justify-center rounded-4xl text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring'
-                            }
-                        >
-                            <X
-                                aria-hidden={'true'}
-                                className={'size-3.5'}
-                            />
-                        </button>
-                    </span>
-                ))}
-                {packages.length < MAX_TREND_PACKAGES && (
-                    <div className={'w-full max-w-xs'}>
-                        <PackageSearch
-                            compact
-                            secondary
-                            onPick={(spec) => {
-                                const name = parseSpec(spec)?.name;
-                                if (name !== undefined && !packages.includes(name)) setPackages([...packages, name]);
-                            }}
-                        />
-                    </div>
-                )}
-            </div>
+            <PackageChips
+                packages={packages}
+                colors={colors}
+                onRemove={remove}
+                onAdd={add}
+                focus={chipFocus}
+                onFocused={clearChipFocus}
+            />
 
             {packages.length === 0 ? (
                 <div className={'flex flex-col items-center gap-4 py-10 text-center'}>
@@ -240,42 +169,20 @@ const TrendsPage = () => {
                     <p className={'text-callout text-muted-foreground'}>Add a package above to start comparing.</p>
                 </div>
             ) : (
-                <div
-                    aria-busy={loading}
-                    className={'relative flex flex-col gap-8'}
-                >
+                <div className={'relative flex flex-col gap-8'}>
+                    {/* The controls stay live while the chart catches up: a change of metric or range must not throw the keyboard off them. */}
+                    <TrendsControls
+                        metric={metric}
+                        range={range}
+                        group={group}
+                        onChange={change}
+                    />
+
                     <div
                         inert={loading}
+                        aria-busy={loading}
                         className={'flex flex-col gap-8'}
                     >
-                        <div className={'flex flex-wrap items-center justify-between gap-3'}>
-                            <div className={'flex flex-wrap items-center gap-3'}>
-                                <SegmentedControl
-                                    label={'Metric'}
-                                    value={metric}
-                                    options={METRICS}
-                                    onChange={(next) => change({ metric: next })}
-                                />
-                                {metric === 'downloads' && (
-                                    <>
-                                        <SegmentedControl
-                                            label={'Range'}
-                                            value={range}
-                                            options={RANGES}
-                                            onChange={(next) => change({ range: next })}
-                                        />
-                                        <SegmentedControl
-                                            label={'Group by'}
-                                            value={group}
-                                            options={GROUPS}
-                                            onChange={(next) => change({ group: next })}
-                                        />
-                                    </>
-                                )}
-                            </div>
-                            <CopyLink />
-                        </div>
-
                         <section
                             aria-labelledby={'trend-title'}
                             className={'flex flex-col gap-3'}
@@ -291,7 +198,7 @@ const TrendsPage = () => {
                                     role={'status'}
                                     className={'text-caption text-muted-foreground'}
                                 >
-                                    {measuring > 0 ? `Measuring ${measuring} more ${measuring === 1 ? 'version' : 'versions'}…` : ''}
+                                    {measuringText(measuring)}
                                 </p>
                             </div>
                             {drawn.rows.length === 0 ? (
@@ -349,21 +256,24 @@ const TrendsPage = () => {
 export const Route = createFileRoute('/trends')({
     validateSearch: validateTrendsSearch,
     head: ({ match }) => {
+        const page = publicPage('/trends');
         const named = match.search.packages;
         const names = named === undefined ? [] : parsePackages(named);
         return pageHead({
-            title: names.length > 0 ? `${names.join(' vs ')}: size and downloads` : 'npm package trends: compare size and downloads',
+            title: names.length > 0 ? `${names.join(' vs ')}: size and downloads` : page.title,
             description:
                 names.length > 0
                     ? `Compare ${names.join(', ')}: minified and gzip size across releases, weekly downloads and GitHub stars, side by side.`
-                    : 'Compare npm packages side by side: minified and gzip size across releases, downloads over time, install size and GitHub stars.',
+                    : (page.description ?? siteConfig.description),
             path: '/trends',
             // A comparison of any packages is a view of this one page: only the page itself is listed.
             noindex: names.length > 0,
             breadcrumbs: [
-                { name: siteConfig.title, path: '/' },
+                { name: 'Home', path: '/' },
                 { name: 'Trends', path: '/trends' },
             ],
+            // A page of comparisons, not one thing: the packages compared are chosen by whoever opens it.
+            page: { '@type': 'CollectionPage' },
         });
     },
     component: TrendsPage,

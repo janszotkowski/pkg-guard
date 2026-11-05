@@ -1,6 +1,10 @@
-import { TREND_RANGES, parseSpec, type TrendRange } from '@pkg-guard/core';
+import { TREND_RANGES, parseSpec, type AnalysisResponse, type TrendRange, type VersionEntry } from '@pkg-guard/core';
+import { ApiError } from '@lib/api';
 
 export const MAX_TREND_PACKAGES = 4;
+
+/** One color per package on the page, in the order they are handed out. */
+export const SERIES_COLORS = ['var(--series-1)', 'var(--series-2)', 'var(--series-3)', 'var(--series-4)'] as const;
 
 /** What the page opens with when the address names no packages. */
 export const DEFAULT_TREND_PACKAGES = ['react', 'vue'] as const;
@@ -47,6 +51,9 @@ export const trendsView = (search: TrendsSearch): TrendsView => ({
     range: search.range ?? '1y',
     group: search.group ?? 'week',
 });
+
+/** Today's date, which the server and the browser both read the same way: as a day in UTC. */
+export const todayIso = (): string => new Date().toISOString().slice(0, 10);
 
 const DAY_MS = 86_400_000;
 
@@ -124,4 +131,42 @@ export const monthTicks = (from: number, to: number, width: number): number[] =>
     const room = Math.max(2, Math.floor(width / 80));
     const step = [1, 2, 3, 4, 6, 12, 24, 36, 60].find((candidate) => months.length / candidate <= room) ?? 120;
     return months.filter((_, index) => index % step === 0);
+};
+
+export type TrendRow = {
+    name: string;
+    time: number;
+    value: number;
+    /** What the tooltip adds to the name, such as the version released on this date. */
+    detail?: string;
+};
+
+/** The measured releases of one package as points of a trend, oldest first. A version without a size or a date has no place on it. */
+export const versionRows = (name: string, versions: readonly VersionEntry[]): TrendRow[] =>
+    versions
+        .flatMap((entry): TrendRow[] => (entry.gzip === null || entry.publishedAt === null ? [] : [{ name, time: Date.parse(entry.publishedAt), value: entry.gzip, detail: entry.version }]))
+        .sort((a, b) => a.time - b.time);
+
+/** What the page says while versions are still being measured; nothing once they all are. */
+export const measuringText = (count: number): string => (count > 0 ? `Measuring ${count} more ${count === 1 ? 'version' : 'versions'}…` : '');
+
+/** A color stays with its package when others are removed; a new package takes the first color nobody has. */
+export const assignColors = (packages: readonly string[], previous: ReadonlyMap<string, string>, palette: readonly string[] = SERIES_COLORS): ReadonlyMap<string, string> => {
+    const next = new Map([...previous].filter(([name]) => packages.includes(name)));
+    const fallback = palette[0] ?? '';
+    for (const name of packages) {
+        if (next.has(name)) continue;
+        const taken = new Set(next.values());
+        next.set(name, palette.find((color) => !taken.has(color)) ?? fallback);
+    }
+    return next;
+};
+
+/** Why a package has no sizes in the table, when it has none: nothing when it has them. */
+export const packageState = (data: AnalysisResponse | undefined, error: unknown): string | undefined => {
+    if (error instanceof ApiError && error.code === 'NOT_FOUND') return 'Not on npm';
+    if (error !== null && error !== undefined) return 'Could not be loaded';
+    if (data === undefined || data.status === 'queued' || data.status === 'running') return 'Measuring…';
+    if (data.status === 'failed') return 'Could not be measured';
+    return data.result.sizes === null ? 'Nothing to import' : undefined;
 };
