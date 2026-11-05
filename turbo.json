@@ -23,6 +23,11 @@
                 "JOB_*",
                 "MAX_*",
                 "QUEUE_*",
+                "RATE_LIMIT_*",
+                "CLIENT_IP_HEADER",
+                "INTERNAL_API_TOKEN",
+                "GITHUB_TOKEN",
+                "STORE_*",
                 "API_INTERNAL_URL",
                 "VITE_*"
             ]
@@ -51,6 +56,11 @@
                 "JOB_*",
                 "MAX_*",
                 "QUEUE_*",
+                "RATE_LIMIT_*",
+                "CLIENT_IP_HEADER",
+                "INTERNAL_API_TOKEN",
+                "GITHUB_TOKEN",
+                "STORE_*",
                 "API_INTERNAL_URL",
                 "VITE_*"
             ]
