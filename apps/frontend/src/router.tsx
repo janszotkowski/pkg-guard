@@ -22,8 +22,10 @@ const responseNonce = (): string | undefined => {
 
 export const getRouter = () => {
     const nonce = responseNonce();
-    // One client per router, so per request on the server: no cached data crosses from one visitor to another.
-    const queryClient = new QueryClient();
+    // One client per router, so per request on the server: no cached data crosses from one visitor to another. The API
+    // answers at once or not at all (`lib/api.ts` has the timeout), so a failed request is not tried again by itself,
+    // and what the page shows is fresh for half a minute; a query that needs otherwise says so.
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false, staleTime: 30_000 } } });
     return createRouter({
         routeTree,
         context: { queryClient } satisfies RouterContext,
@@ -38,7 +40,7 @@ export const getRouter = () => {
             </CSPProvider>
         ),
         scrollRestoration: true,
-        defaultPreload: false,
+        defaultPreload: 'intent',
         defaultNotFoundComponent: () => <NotFound />,
         defaultErrorComponent: ({ error, reset }) => (
             <ErrorState

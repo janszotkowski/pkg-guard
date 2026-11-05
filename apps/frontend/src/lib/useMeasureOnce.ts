@@ -16,8 +16,10 @@ export const useMeasureOnce = (histories: readonly (HistoryResponse | undefined)
             if (history === undefined || asked.current.has(history.name)) continue;
             if (!history.versions.some((entry) => entry.status === 'unmeasured')) continue;
             asked.current.add(history.name);
+            // The answer says the versions are queued, which is what starts the polling. It is not written to the cache as it
+            // is, though: a poll that answered meanwhile may already know more, and asking again cannot go back in time.
             measureHistory(history.name).then(
-                (answer) => client.setQueryData(historyQuery(history.name).queryKey, answer),
+                () => client.invalidateQueries({ queryKey: historyQuery(history.name).queryKey }),
                 () => asked.current.delete(history.name),
             );
         }
