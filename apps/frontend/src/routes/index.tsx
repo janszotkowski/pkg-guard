@@ -2,7 +2,11 @@ import { Link, createFileRoute } from '@tanstack/react-router';
 import { IsoPackage } from '@components/iso/IsoPackage';
 import { PackageSearch } from '@components/PackageSearch';
 import { canonicalUrl, siteConfig } from '@config/site';
+import { publicPage } from '@lib/documents/pages';
 import { pageHead } from '@lib/head';
+
+/** The tab and the heading say the same thing: one sentence, in `src/lib/documents/pages.ts`. */
+const PAGE = publicPage('/');
 
 const PROMISES = [
     { title: 'Measured, not guessed', body: 'Every package goes through a real bundler, and you see which one and which version.' },
@@ -18,7 +22,7 @@ const HomePage = () => (
     >
         <div className={'grid items-center gap-10 lg:grid-cols-[1fr_1.1fr]'}>
             <div className={'flex flex-col gap-6'}>
-                <h1 className={'text-display text-balance'}>What does this package really cost?</h1>
+                <h1 className={'text-display text-balance'}>{PAGE.title}</h1>
                 <p className={'max-w-xl text-headline font-normal text-muted-foreground'}>Minified, gzip and brotli sizes of any npm package, and what it puts on disk.</p>
                 <PackageSearch />
                 <Link
@@ -47,13 +51,13 @@ const HomePage = () => (
 export const Route = createFileRoute('/')({
     head: () =>
         pageHead({
-            title: 'npm package size and bundle cost',
-            description: siteConfig.description,
+            title: PAGE.title,
+            description: PAGE.description ?? siteConfig.description,
             path: '/',
             nodes: [
                 {
                     '@type': 'WebApplication',
-                    '@id': `${canonicalUrl('/')}#app`,
+                    '@id': `${canonicalUrl('/')}#application`,
                     name: siteConfig.title,
                     url: canonicalUrl('/'),
                     description: siteConfig.description,

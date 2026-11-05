@@ -1,8 +1,11 @@
 import { createFileRoute } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { siteConfig } from '@config/site';
+import { publicPage } from '@lib/documents/pages';
 import { CONNECTIONS, formatDownloadTime } from '@lib/format';
 import { pageHead } from '@lib/head';
+
+const PAGE = publicPage('/about');
 
 const EXAMPLE_SIZES = [
     { label: '50 kB', bytes: 50_000 },
@@ -43,7 +46,7 @@ const AboutPage = () => (
         className={'mx-auto flex w-full max-w-3xl flex-1 flex-col gap-12 px-4 py-14 lg:py-20'}
     >
         <div className={'flex flex-col gap-4'}>
-            <h1 className={'text-display text-balance'}>How it works</h1>
+            <h1 className={'text-display text-balance'}>{PAGE.title}</h1>
             <p className={'text-headline font-normal text-muted-foreground'}>What {siteConfig.title} downloads, what it does with it, and how each number is worked out.</p>
         </div>
 
@@ -101,7 +104,13 @@ const AboutPage = () => (
             <p className={'text-muted-foreground'}>
                 It is arithmetic, not a measurement: the gzip size in bits divided by a fixed connection speed. For example, 50 kB is 400,000 bits, which takes 1 second at 400 kbit/s.
             </p>
-            <div className={'overflow-x-auto'}>
+            {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex */}
+            <div
+                role={'region'}
+                aria-label={'Download times'}
+                tabIndex={0}
+                className={'overflow-x-auto'}
+            >
                 <table className={'w-full border-y text-left text-callout tabular-nums'}>
                     <caption className={'sr-only'}>Download times for example sizes on each connection</caption>
                     <thead>
@@ -197,13 +206,14 @@ const AboutPage = () => (
 export const Route = createFileRoute('/about')({
     head: () =>
         pageHead({
-            title: 'How it works: what is downloaded and measured',
-            description: 'What pkg-guard downloads from npm, how packages are handled without running them, and how sizes and download times are worked out.',
+            title: PAGE.title,
+            description: PAGE.description ?? siteConfig.description,
             path: '/about',
             breadcrumbs: [
-                { name: siteConfig.title, path: '/' },
-                { name: 'How it works', path: '/about' },
+                { name: 'Home', path: '/' },
+                { name: PAGE.title, path: '/about' },
             ],
+            page: { '@type': 'AboutPage' },
         }),
     component: AboutPage,
 });

@@ -13,7 +13,7 @@ import { PackageLinks, npmUrl } from '@components/PackageLinks';
 import { PACKAGE_TABS, PackageTabs, type PackageTab } from '@components/PackageTabs';
 import { SizeResult } from '@components/SizeResult';
 import { VersionHistory } from '@components/VersionHistory';
-import { canonicalUrl, siteConfig } from '@config/site';
+import { canonicalUrl } from '@config/site';
 import { ApiError, analysisQuery } from '@lib/api';
 import { formatSizeText } from '@lib/format';
 import { clip, pageHead } from '@lib/head';
@@ -33,7 +33,7 @@ type PendingProps = {
 };
 
 const pendingText = (props: PendingProps): string => {
-    if (props.stalled) return 'Could not get an update from the server. Still trying…';
+    if (props.stalled) return 'Could not get an update from the server. Reload to try again.';
     return props.status === 'queued' ? 'Waiting for a free worker…' : 'Installing and bundling the package…';
 };
 
@@ -245,11 +245,15 @@ const packageHead = (spec: string, data: AnalysisResponse | undefined) => {
         description: clip(text),
         path,
         noindex: result === undefined || parsed?.version !== undefined,
+        // Only a measured package has a share image and a Markdown twin worth announcing.
         ...(result === undefined
             ? {}
-            : { ogImage: { path: `/og/package/${spec}.png`, alt: `${name}: ${sizes === undefined || sizes === null ? 'install size' : `${formatSizeText(sizes.gzip)} minified and gzipped`}` } }),
+            : {
+                  ogImage: { path: `/og/package/${spec}.png`, alt: `${name}: ${sizes === undefined || sizes === null ? 'install size' : `${formatSizeText(sizes.gzip)} minified and gzipped`}` },
+                  markdown: `${path}.md`,
+              }),
         breadcrumbs: [
-            { name: siteConfig.title, path: '/' },
+            { name: 'Home', path: '/' },
             { name, path },
         ],
         nodes:
