@@ -5,6 +5,7 @@ import { pino } from 'pino';
 import { loadConfig } from '@config/env.ts';
 import { folderBytes } from '@modules/analysis/install.ts';
 import { runAnalysis } from '@modules/analysis/runner.ts';
+import { retryDelay, worthLogging } from '@modules/backend/backoff.ts';
 import { createBackendClient } from '@modules/backend/client.ts';
 
 const loaded = loadConfig();
@@ -53,11 +54,14 @@ const maintain = (): Promise<void> => {
 
 /** It only ever handles what the backend's queue holds, and that holds only what someone asked for: nothing is fetched on its own. */
 const slot = async (index: number): Promise<void> => {
+    let failures = 0;
     while (!stop.signal.aborted) {
         let waitForWork = false;
         try {
             if (maintenance !== undefined) await maintenance;
             const job = await backend.claim();
+            if (failures > 0) logger.info({ slot: index, failures }, 'backend reachable again');
+            failures = 0;
             if (job === undefined) {
                 waitForWork = true;
             } else {
@@ -95,11 +99,12 @@ const slot = async (index: number): Promise<void> => {
                 }
             }
         } catch (error) {
-            // The backend may simply not be up yet: try again in a while.
-            logger.warn({ slot: index, err: error }, 'worker loop');
+            // The backend may simply not be up yet: try again in a while, less often the longer it stays away.
+            failures++;
+            if (worthLogging(failures)) logger.warn({ slot: index, failures, err: error }, 'worker loop');
             waitForWork = true;
         }
-        if (waitForWork) await sleep(config.WORKER_POLL_MS, undefined, { signal: stop.signal }).catch(() => undefined);
+        if (waitForWork) await sleep(retryDelay(failures, config.WORKER_POLL_MS), undefined, { signal: stop.signal }).catch(() => undefined);
     }
 };
 
