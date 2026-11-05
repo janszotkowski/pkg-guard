@@ -68,7 +68,7 @@ apps/worker      The analyzer, run only in Docker: installs, bundles and measure
 apps/frontend    Web app (TanStack Start, Router, Query, Table, Charts; Tailwind; Nitro)
 apps/cli         Command line: asks the API what a package costs and prints it
 apps/e2e         Browser tests (Playwright) with an axe-core audit
-packages/core    Shared API contract (zod/mini), reading its answers, package spec parsing
+packages/core    Shared API contract (zod/mini), typed API client, package spec parsing
 docker           The configuration of the worker's network gateway
 docs             API reference, MCP guide, changelog, architecture, roadmap
 tools            Policy check, smoke test, .env initializer, oxlint plugin
@@ -135,7 +135,7 @@ Anyone may call it, within a fair-use limit (300 requests a minute per address b
 | `GET /v1/packages`     | Every measured package (what the sitemap lists)                                                                                                                               |
 | `GET /v1/openapi.json` | The OpenAPI 3.1 description of the API                                                                                                                                        |
 
-Errors share one shape, `{ error: { code, message, requestId } }`, with codes `VALIDATION_FAILED`, `NOT_FOUND`, `RATE_LIMITED`, `UNAUTHORIZED`, `UNAVAILABLE` and `INTERNAL`. The response shapes are defined once, as zod schemas, in [`packages/core/src/contract`](packages/core/src/contract).
+Errors share one shape, `{ error: { code, message, requestId } }`, with codes `VALIDATION_FAILED`, `NOT_FOUND`, `RATE_LIMITED`, `UNAUTHORIZED`, `UNAVAILABLE` and `INTERNAL`. The response shapes are defined once, as zod schemas, in [`packages/core/src/contract`](packages/core/src/contract), and [`packages/core/src/client`](packages/core/src/client/api.ts) is a typed client for them.
 
 ### MCP server
 

@@ -1,15 +1,9 @@
 import {
-    analysisPath,
-    analysisResponseSchema,
-    answerOf,
-    downloadsResponseSchema,
-    historyResponseSchema,
+    ApiError,
+    createApiClient,
     isComplete,
-    packageMetadataSchema,
-    packagesResponseSchema,
-    searchResponseSchema,
-    starsResponseSchema,
     type AnalysisResponse,
+    type ApiClient,
     type DownloadsResponse,
     type HistoryResponse,
     type PackageMetadata,
@@ -20,8 +14,6 @@ import {
 import { keepPreviousData, queryOptions, type QueryState } from '@tanstack/react-query';
 import { apiBaseUrl, internalApiHeaders } from '@config/api';
 
-/** No request waits longer than this, whatever asked for it: a stuck API is told apart from a slow one. */
-const TIMEOUT_MS = 15_000;
 /** While a package is queued or running its sizes can arrive any second; the part-by-part numbers take longer, and the page already shows the sizes. */
 const POLL_MS = 1000;
 const EXPORTS_POLL_MS = 2000;
@@ -33,14 +25,10 @@ const MAX_POLL_FAILURES = 6;
 export { ApiError } from '@pkg-guard/core';
 
 /**
- * One request to the API: from the browser at its public address, from the server at its internal one, saying whom the
- * page is for. It gives up after `TIMEOUT_MS`, or sooner when the caller's own signal (a query cancelled, a page left) says so.
+ * The one way the frontend talks to the backend: the typed client from core. Made per call: from the browser it asks at
+ * the public address, from the server at its internal one, saying whom the page is for.
  */
-const api = (path: string, init: { method?: 'POST'; signal?: AbortSignal | undefined } = {}): Promise<Response> => {
-    const timeout = AbortSignal.timeout(TIMEOUT_MS);
-    const signal = init.signal === undefined ? timeout : AbortSignal.any([init.signal, timeout]);
-    return fetch(`${apiBaseUrl()}${path}`, { ...init, signal, headers: internalApiHeaders() });
-};
+const createApi = (): ApiClient => createApiClient({ baseUrl: apiBaseUrl(), headers: internalApiHeaders() });
 
 type PollState = Pick<QueryState, 'status' | 'dataUpdateCount' | 'errorUpdateCount'>;
 
@@ -69,7 +57,7 @@ export const pollInterval = (query: { state: PollState }, normal: number | false
 };
 
 // A finished answer may be kept for a day, by the browser or a CDN.
-export const fetchAnalysis = async (spec: string, signal?: AbortSignal): Promise<AnalysisResponse> => answerOf(await api(analysisPath(spec), { signal }), analysisResponseSchema);
+export const fetchAnalysis = (spec: string, signal?: AbortSignal): Promise<AnalysisResponse> => createApi().analysis(spec, { signal });
 
 /**
  * One package's analysis, asked for again while it is waiting or running. Once the first answer has named the exact
@@ -94,9 +82,12 @@ export const analysisQuery = (spec: string) => {
 
 /** Packages matching a text. Failing is no answer at all, which is what the page shows then too. */
 export const fetchSuggestions = async (query: string, signal?: AbortSignal): Promise<PackageSuggestion[]> => {
-    const response = await api(`/v1/search?q=${encodeURIComponent(query)}`, { signal });
-    if (!response.ok) return [];
-    return searchResponseSchema.parse(await response.json()).packages;
+    try {
+        return await createApi().search(query, { signal });
+    } catch (error) {
+        if (error instanceof ApiError) return [];
+        throw error;
+    }
 };
 
 /** Packages offered while typing. Failing shows nothing: the name typed can still be looked up. What was offered stays until the next answer arrives. */
@@ -109,8 +100,7 @@ export const searchQuery = (query: string) =>
     });
 
 /** A package's recent versions. Reading this downloads nothing. */
-export const fetchHistory = async (name: string, signal?: AbortSignal): Promise<HistoryResponse> =>
-    answerOf(await api(`/v1/history?package=${encodeURIComponent(name)}`, { signal }), historyResponseSchema);
+export const fetchHistory = (name: string, signal?: AbortSignal): Promise<HistoryResponse> => createApi().history(name, { signal });
 
 /** A package's recent versions, asked for again while any of them is being measured. Reading this downloads nothing. */
 export const historyQuery = (name: string) =>
@@ -121,11 +111,10 @@ export const historyQuery = (name: string) =>
     });
 
 /** Queues every version not yet measured. Each of them will be downloaded, in the worker's own container. */
-export const measureHistory = async (name: string): Promise<HistoryResponse> => answerOf(await api(`/v1/history?package=${encodeURIComponent(name)}`, { method: 'POST' }), historyResponseSchema);
+export const measureHistory = (name: string): Promise<HistoryResponse> => createApi().measureHistory(name);
 
 /** A package's downloads per day, from npm. */
-export const fetchDownloads = async (name: string, range: TrendRange, signal?: AbortSignal): Promise<DownloadsResponse> =>
-    answerOf(await api(`/v1/downloads?package=${encodeURIComponent(name)}&range=${range}`, { signal }), downloadsResponseSchema);
+export const fetchDownloads = (name: string, range: TrendRange, signal?: AbortSignal): Promise<DownloadsResponse> => createApi().downloads(name, range, { signal });
 
 /** A package's downloads per day. npm updates them once a day, so they are kept for a while. */
 export const downloadsQuery = (name: string, range: TrendRange) =>
@@ -140,13 +129,12 @@ export const starsQuery = (repository: string | undefined) =>
     queryOptions({
         queryKey: ['stars', repository],
         enabled: repository !== undefined,
-        queryFn: async ({ signal }) => answerOf(await api(`/v1/stars?repository=${encodeURIComponent(repository ?? '')}`, { signal }), starsResponseSchema),
+        queryFn: async ({ signal }) => ({ stars: await createApi().stars(repository ?? '', { signal }) }),
         staleTime: 60 * 60_000,
     });
 
 /** What the registry says of one exact version. */
-export const fetchMetadata = async (name: string, version: string, signal?: AbortSignal): Promise<PackageMetadata> =>
-    answerOf(await api(`/v1/metadata?package=${encodeURIComponent(`${name}@${version}`)}`, { signal }), packageMetadataSchema);
+export const fetchMetadata = (name: string, version: string, signal?: AbortSignal): Promise<PackageMetadata> => createApi().metadata(name, version, { signal });
 
 /** What npm says about one version. It comes from the registry, so reading it downloads no package. */
 export const metadataQuery = (name: string, version: string) =>
@@ -157,11 +145,7 @@ export const metadataQuery = (name: string, version: string) =>
     });
 
 /** A package only if it has been measured: what documents for crawlers read, so that they never cause a download. Undefined when it has not. */
-export const fetchKnownAnalysis = async (spec: string): Promise<AnalysisResponse | undefined> => {
-    const response = await api(analysisPath(spec, true));
-    if (response.status === 404) return undefined;
-    return answerOf(response, analysisResponseSchema);
-};
+export const fetchKnownAnalysis = (spec: string): Promise<AnalysisResponse | undefined> => createApi().knownAnalysis(spec);
 
 /** Every measured package, for the sitemap. */
-export const fetchMeasuredPackages = async (): Promise<PackagesResponse['packages']> => (await answerOf(await api('/v1/packages'), packagesResponseSchema)).packages;
+export const fetchMeasuredPackages = (): Promise<PackagesResponse['packages']> => createApi().packages();

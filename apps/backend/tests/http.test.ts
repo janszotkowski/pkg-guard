@@ -1,7 +1,7 @@
 import { serve } from '@hono/node-server';
 import { HTTPException } from 'hono/http-exception';
 import { describe, expect, it, vi } from 'vitest';
-import { errorResponseSchema, type AnalysisResult } from '@pkg-guard/core';
+import { createApiClient, errorResponseSchema, type AnalysisResult } from '@pkg-guard/core';
 import { createApp, type Container } from '@composition/app.ts';
 import { loadConfig } from '@config/env.ts';
 import { openDatabase } from '@modules/analyses/infrastructure/database.ts';
@@ -457,5 +457,32 @@ describe('the rate limit on a real socket', () => {
         } finally {
             await close();
         }
+    });
+});
+
+describe('the typed client from core, against this API', () => {
+    const clientOf = (app: ReturnType<typeof setup>['app']) => createApiClient({ baseUrl: 'http://api.test', fetch: (input, init) => Promise.resolve(app.request(String(input), init)) });
+
+    it('reads every answer through the contract', async () => {
+        const { app, store } = setup();
+        const client = clientOf(app);
+        expect(await client.knownAnalysis('example')).toBeUndefined();
+        expect(await client.analysis('example')).toMatchObject({ status: 'queued', package: { name: 'example', version: '2.0.0' } });
+        const job = store.claim();
+        if (job === undefined) throw new Error('nothing was queued');
+        store.complete(job.id, RESULT);
+        expect(await client.knownAnalysis('example')).toMatchObject({ status: 'done', result: { sizes: { gzip: 200 } } });
+        expect((await client.history('example')).versions.map((entry) => entry.version)).toEqual(['2.0.0', '1.0.0']);
+        expect((await client.measureHistory('example')).name).toBe('example');
+        expect((await client.downloads('example', '1y')).days).toEqual([]);
+        expect((await client.metadata('example', '1.0.0')).license).toBe('MIT');
+        expect(await client.stars('owner/example')).toBe(42);
+        expect(await client.search('example')).toEqual([]);
+        expect(await client.packages()).toMatchObject([{ name: 'example' }]);
+    });
+
+    it('turns what the API refuses into its error', async () => {
+        const { app } = setup();
+        await expect(clientOf(app).analysis('missing')).rejects.toMatchObject({ code: 'NOT_FOUND', message: 'missing is not on npm' });
     });
 });
