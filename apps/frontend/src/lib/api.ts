@@ -4,6 +4,7 @@ import {
     errorResponseSchema,
     downloadsResponseSchema,
     historyResponseSchema,
+    packageMetadataSchema,
     packagesResponseSchema,
     searchResponseSchema,
     starsResponseSchema,
@@ -18,7 +19,7 @@ import { keepPreviousData, queryOptions } from '@tanstack/react-query';
 import { API_URL } from '@config/api';
 
 const TIMEOUT_MS = 15_000;
-const POLL_MS = 1000;
+const POLL_MS = 500;
 const HISTORY_POLL_MS = 2000;
 
 export class ApiError extends Error {
@@ -121,6 +122,19 @@ export const starsQuery = (repository: string | undefined) =>
             return starsResponseSchema.parse(await response.json());
         },
         staleTime: 60 * 60_000,
+        retry: false,
+    });
+
+/** What npm says about one version. It comes from the registry, so reading it downloads no package. */
+export const metadataQuery = (name: string, version: string) =>
+    queryOptions({
+        queryKey: ['metadata', name, version],
+        queryFn: async ({ signal }) => {
+            const response = await fetch(`${API_URL}/v1/metadata?package=${encodeURIComponent(`${name}@${version}`)}`, { signal });
+            if (!response.ok) throw new Error(`The API answered ${response.status}`);
+            return packageMetadataSchema.parse(await response.json());
+        },
+        staleTime: 30 * 60_000,
         retry: false,
     });
 

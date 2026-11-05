@@ -2,7 +2,7 @@ import { serve } from '@hono/node-server';
 import { createApp } from '@composition/app.ts';
 import { loadConfig } from '@config/env.ts';
 import { openDatabase } from '@modules/analyses/infrastructure/database.ts';
-import { createDownloadsReader, createStarsReader, createVersionLister, resolveFromRegistry, searchRegistry } from '@modules/analyses/infrastructure/registry.ts';
+import { cacheResolver, createDownloadsReader, createMetadataReader, createStarsReader, createVersionLister, resolveFromRegistry, searchRegistry } from '@modules/analyses/infrastructure/registry.ts';
 import { createAnalysisStore } from '@modules/analyses/infrastructure/store.ts';
 import { createLogger } from '@platform/logger.ts';
 
@@ -37,11 +37,12 @@ const server = serve(
             config,
             logger,
             store,
-            resolve: resolveFromRegistry,
+            resolve: cacheResolver(resolveFromRegistry),
             search: searchRegistry,
             listVersions: createVersionLister(),
             readDownloads: createDownloadsReader(),
             readStars: createStarsReader(config.GITHUB_TOKEN),
+            readMetadata: createMetadataReader(),
         }).fetch,
         port: config.PORT,
         hostname: config.HOST,

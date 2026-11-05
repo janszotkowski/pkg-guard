@@ -6,7 +6,7 @@ Features that come next, in the order they are planned. Tick an item when it lan
 
 These download nothing extra and show a difference straight away.
 
-- [ ] **Download time (XS)**: the size as a time on 3G and 4G.
+- [x] **Download time (XS)**: the size as a time on 3G and 4G.
 - [ ] **Package health panel (S–M)**: deprecated, licence, TypeScript types, ESM or CommonJS, last release and install scripts in one place. It also makes room for the security data of section 4.
 - [ ] **Why a version grew (S–M)**: compare the composition of two versions, such as "+12 kB, `lodash` was added". Each version already stores its composition.
 

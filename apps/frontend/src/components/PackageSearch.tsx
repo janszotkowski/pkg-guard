@@ -1,6 +1,6 @@
 import { MIN_SEARCH_LENGTH, parseSpec, type PackageSuggestion } from '@pkg-guard/core';
 import { useQuery } from '@tanstack/react-query';
-import { useNavigate } from '@tanstack/react-router';
+import { useNavigate, useRouter } from '@tanstack/react-router';
 import { Search } from 'lucide-react';
 import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { Button } from '@components/ui/button';
@@ -60,6 +60,7 @@ type PackageSearchProps = {
  */
 export const PackageSearch = (props: PackageSearchProps) => {
     const navigate = useNavigate();
+    const router = useRouter();
     const hydrated = useHydrated();
     const fieldId = useId();
     const errorId = useId();
@@ -77,6 +78,11 @@ export const PackageSearch = (props: PackageSearchProps) => {
     const showList = open && suggestions.length > 0;
     const active = showList ? suggestions[activeIndex] : undefined;
     const activeId = active === undefined ? undefined : `${listId}-${activeIndex}`;
+
+    // The package page's code, fetched ahead so that opening it has nothing to wait for. Should this fail, the navigation fetches it again.
+    useEffect(() => {
+        void Promise.resolve(router.loadRouteChunk(router.routesById['/package/$'])).catch(() => undefined);
+    }, [router]);
 
     // The list scrolls: what the arrows reach must be in view.
     useEffect(() => {

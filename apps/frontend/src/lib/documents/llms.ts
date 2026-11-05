@@ -15,7 +15,7 @@ export const llmsTxt = (): string => `# ${siteConfig.title}
 - **See why a package is large.** The Composition tab (\`?tab=composition\`) lists the packages in its bundle with their share.
 - **See how a package grew.** The History tab lists recent releases with their size and the change between them.
 - **Compare packages.** ${canonicalUrl('/trends')} with \`?packages=react,vue\` (up to 4) shows size across releases or downloads over time (\`&metric=downloads&range=1y&group=week\`), with install size, weekly downloads and GitHub stars.
-- **Use the data in code.** A public read-only JSON API at ${API_URL}/v1: \`/v1/analyses?package=react\`, \`/v1/history?package=react\`, \`/v1/downloads?package=react&range=1y\`, \`/v1/search?q=react\`, \`/v1/packages\`. Asking \`/v1/analyses\` for a package not measured yet queues it; add \`known=1\` to read only what has been measured.
+- **Use the data in code.** A public read-only JSON API at ${API_URL}/v1: \`/v1/analyses?package=react\`, \`/v1/history?package=react\`, \`/v1/downloads?package=react&range=1y\`, \`/v1/metadata?package=react@19.1.0\` (deprecation, licence, types, install scripts),\`/v1/search?q=react\`, \`/v1/packages\`. Asking \`/v1/analyses\` for a package not measured yet queues it; add \`known=1\` to read only what has been measured.
 
 Do not use ${siteConfig.title} for: packages outside the public npm registry; a size the exact bundle of an app will have, since each app's bundler and imports differ; a package made for Node.js, whose number is what a bundler pulls in rather than a browser cost (its page says so); whether a package is safe, which it does not check.
 

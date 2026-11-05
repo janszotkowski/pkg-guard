@@ -14,7 +14,7 @@ import {
 } from '@pkg-guard/core';
 import { Hono } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
-import type { DownloadsReader, PackageSearcher, ReleasedVersion, StarsReader, VersionLister, VersionResolver } from '@modules/analyses/infrastructure/registry.ts';
+import type { DownloadsReader, MetadataReader, PackageSearcher, ReleasedVersion, StarsReader, VersionLister, VersionResolver } from '@modules/analyses/infrastructure/registry.ts';
 import type { AnalysisStore } from '@modules/analyses/infrastructure/store.ts';
 import { AppError } from '@platform/errors.ts';
 import type { AppEnv } from '@platform/http/app.ts';
@@ -46,6 +46,7 @@ export const analysisRoutes = (
     listVersions: VersionLister,
     readDownloads: DownloadsReader,
     readStars: StarsReader,
+    readMetadata: MetadataReader,
 ): Hono<AppEnv> => {
     const routes = new Hono<AppEnv>();
 
@@ -115,6 +116,15 @@ export const analysisRoutes = (
         if (!REPOSITORY.test(repository) || repository.split('/').some((part) => part.startsWith('.'))) throw new AppError('VALIDATION_FAILED', 'repository must be owner/name');
         c.header('cache-control', `public, max-age=${DOWNLOADS_SECONDS}`);
         return c.json({ stars: await readStars(repository) });
+    });
+
+    // Only what the registry says about the version: nothing is queued or downloaded for this.
+    routes.get('/metadata', async (c) => {
+        const spec = parseSpec(c.req.query('package') ?? '');
+        const version = spec?.version;
+        if (spec === undefined || version === undefined || !isExactVersion(version)) throw new AppError('VALIDATION_FAILED', 'package must be a name with an exact version, such as react@19.1.0');
+        c.header('cache-control', `public, max-age=${DOWNLOADS_SECONDS}`);
+        return c.json(await readMetadata(spec.name, version));
     });
 
     routes.get('/search', async (c) => {

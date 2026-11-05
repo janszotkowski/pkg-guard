@@ -1,4 +1,4 @@
-import { TREND_RANGE_DAYS, isExactVersion, isValidPackageName, type DownloadsResponse, type PackageSuggestion, type TrendRange } from '@pkg-guard/core';
+import { TREND_RANGE_DAYS, isExactVersion, isValidPackageName, type DownloadsResponse, type PackageMetadata, type PackageSuggestion, type TrendRange } from '@pkg-guard/core';
 import { rangeChunks } from '@modules/analyses/application/download-ranges.ts';
 import { selectVersions } from '@modules/analyses/application/versions.ts';
 import { AppError } from '@platform/errors.ts';
@@ -20,6 +20,8 @@ export type VersionLister = (name: string) => Promise<ReleasedVersion[]>;
 export type DownloadsReader = (name: string, range: TrendRange) => Promise<DownloadsResponse['days']>;
 
 export type StarsReader = (repository: string) => Promise<number | null>;
+
+export type MetadataReader = (name: string, version: string) => Promise<PackageMetadata>;
 
 /**
  * The exact version behind `latest`, another dist-tag or a version someone typed, from the registry's small document of
@@ -165,6 +167,92 @@ export const createDownloadsReader = (now: () => number = Date.now): DownloadsRe
         const days = parts.flat();
         cache.set(key, days);
         return days;
+    };
+};
+
+const RESOLVED_TTL_MS = 60_000;
+
+/** What a name or tag resolved to, kept for a minute: every package page starts with this question, and a new release can wait that long. A failure is not kept. */
+export const cacheResolver = (resolve: VersionResolver, now: () => number = Date.now): VersionResolver => {
+    const cache = remember<string>(now, RESOLVED_TTL_MS);
+    return async (name, versionOrTag) => {
+        const key = `${name}@${versionOrTag}`;
+        const cached = cache.get(key);
+        if (cached !== undefined) return cached;
+        const version = await resolve(name, versionOrTag);
+        cache.set(key, version);
+        return version;
+    };
+};
+
+const MAX_DEPRECATED = 500;
+const MAX_LICENSE = 100;
+const INSTALL_SCRIPTS = ['preinstall', 'install', 'postinstall'] as const;
+
+const licenseOf = (document: Record<string, unknown>): string | null => {
+    const { license, licenses } = document;
+    const first: unknown = Array.isArray(licenses) ? licenses[0] : undefined;
+    const named = typeof license === 'string' ? license : (record(license)['type'] ?? record(first)['type']);
+    return typeof named === 'string' && named.trim() !== '' ? named.trim().slice(0, MAX_LICENSE) : null;
+};
+
+const hasTypesCondition = (value: unknown): boolean => {
+    if (Array.isArray(value)) return value.some(hasTypesCondition);
+    if (typeof value !== 'object' || value === null) return false;
+    return Object.entries(value).some(([key, inner]) => key === 'types' || hasTypesCondition(inner));
+};
+
+/** What a version's document in the registry says of itself. An empty `deprecated` is how npm takes a deprecation back. */
+export const parseVersionFacts = (answer: unknown): Pick<PackageMetadata, 'deprecated' | 'license' | 'installScripts'> & { typesIncluded: boolean } => {
+    const document = record(answer);
+    const { deprecated, types, typings, exports, gypfile } = document;
+    const scripts = record(document['scripts']);
+    return {
+        deprecated: deprecated === true ? 'This version is deprecated.' : typeof deprecated === 'string' && deprecated.trim() !== '' ? deprecated.trim().slice(0, MAX_DEPRECATED) : null,
+        license: licenseOf(document),
+        typesIncluded: (typeof types === 'string' && types !== '') || (typeof typings === 'string' && typings !== '') || hasTypesCondition(exports),
+        // A package with a `binding.gyp` is built on install even when it names no script.
+        installScripts: [...INSTALL_SCRIPTS.filter((script) => typeof scripts[script] === 'string'), ...(gypfile === true && typeof scripts['install'] !== 'string' ? ['node-gyp'] : [])],
+    };
+};
+
+/** The name DefinitelyTyped gives a package: `@scope/name` becomes `@types/scope__name`. */
+export const definitelyTypedName = (name: string): string => `@types/${name.startsWith('@') ? name.slice(1).replace('/', '__') : name}`;
+
+const isOnRegistry = async (name: string): Promise<boolean> => {
+    let response: Response;
+    try {
+        response = await fetch(`${REGISTRY}/${name}/latest`, { headers: { accept: 'application/json' }, signal: AbortSignal.timeout(TIMEOUT_MS) });
+    } catch {
+        throw new AppError('UNAVAILABLE', 'The npm registry did not answer');
+    }
+    await response.body?.cancel();
+    if (response.status === 404 || response.status === 405) return false;
+    if (!response.ok) throw new AppError('UNAVAILABLE', `The npm registry answered ${response.status}`);
+    return true;
+};
+
+/** What npm says about one version: its small document in the registry, and the `@types` package when it declares no types. Nothing is installed. Kept for an hour. */
+export const createMetadataReader = (now: () => number = Date.now): MetadataReader => {
+    const cache = remember<PackageMetadata>(now, HOUR_MS);
+    return async (name, version) => {
+        const key = `${name}@${version}`;
+        const cached = cache.get(key);
+        if (cached !== undefined) return cached;
+        let response: Response;
+        try {
+            response = await fetch(`${REGISTRY}/${name}/${encodeURIComponent(version)}`, { headers: { accept: 'application/json' }, signal: AbortSignal.timeout(TIMEOUT_MS) });
+        } catch {
+            throw new AppError('UNAVAILABLE', 'The npm registry did not answer');
+        }
+        if (response.status === 404 || response.status === 405) throw new AppError('NOT_FOUND', `${key} is not on npm`);
+        if (!response.ok) throw new AppError('UNAVAILABLE', `The npm registry answered ${response.status}`);
+        const { typesIncluded, ...facts } = parseVersionFacts(await response.json());
+        const typesName = definitelyTypedName(name);
+        const separate = !typesIncluded && (await isOnRegistry(typesName));
+        const metadata: PackageMetadata = { name, version, ...facts, types: typesIncluded ? 'included' : separate ? 'separate' : 'none', typesPackage: separate ? typesName : null };
+        cache.set(key, metadata);
+        return metadata;
     };
 };
 

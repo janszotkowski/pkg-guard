@@ -23,10 +23,14 @@ docs             This page
 1. The page asks `GET /v1/analyses?package=react`. The backend resolves the name to an exact version and answers from the store, or queues the package.
 2. The worker takes the job with `POST /internal/jobs/claim` and starts a process just for it.
 3. That process installs the package, bundles it with Rolldown, compresses the bundle and answers with the numbers.
-4. The worker hands in the result, and the page, asking every second, shows it.
+4. The worker hands in the result, and the page, which keeps asking, shows it.
 5. The same process then bundles each entry point and each named export alone, and the page adds them when they arrive. Its folder is then removed.
 
-The worker only handles what someone asked for. Nothing is fetched in the background: older versions of a package are measured only when someone looks at them, on a package's History tab or in the size view of the trends page, behind anything someone is waiting for. Suggestions while typing come from the registry's search through `GET /v1/search`: names and descriptions only, nothing is installed.
+The worker only handles what someone asked for. Nothing is fetched in the background: older versions of a package are measured only when someone looks at them, on a package's History tab or in the size view of the trends page, behind anything someone is waiting for. Suggestions while typing come from the registry's search through `GET /v1/search`: names and descriptions only, nothing is installed. The package health panel reads the registry's document of the version through `GET /v1/metadata`, so nothing is installed for it either, and it is not stored with the result, because a version can be deprecated after it was measured.
+
+## Opening a package
+
+Going to a package inside the app never waits: the page opens at once and asks for the size, and history and package health follow without holding anything up. Only the server waits for the first answer, so that a page loaded from its address and read by a crawler arrives complete. What a name or tag resolved to is kept for a minute, because every package page starts with that question to the registry.
 
 ## Handling packages safely
 

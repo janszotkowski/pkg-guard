@@ -167,6 +167,7 @@ const AboutPage = () => (
             <Facts
                 items={[
                     'Versions, release dates and search results come from the npm registry.',
+                    'Package health comes from the same place: deprecation, licence, declared types and install scripts as npm lists them for that version. Install scripts are those of the package itself, not of its dependencies. Only the module format comes from the measurement.',
                     'Download counts come from npm’s statistics, which it updates once a day.',
                     'Stars come from GitHub, when a package names its repository there.',
                 ]}

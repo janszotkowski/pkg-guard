@@ -1,12 +1,14 @@
 import { parseSpec, type AnalysisFailure, type AnalysisResponse } from '@pkg-guard/core';
-import { useSuspenseQuery } from '@tanstack/react-query';
+import { noop, useQuery } from '@tanstack/react-query';
 import { createFileRoute, notFound, useNavigate } from '@tanstack/react-router';
 import { useMemo } from 'react';
 import { Composition } from '@components/Composition';
+import { ErrorState } from '@components/ErrorState';
 import { ExportSizes } from '@components/ExportSizes';
 import { IsoAnalyzing } from '@components/iso/IsoAnalyzing';
 import { IsoOffline } from '@components/iso/IsoOffline';
 import { NotFound } from '@components/NotFound';
+import { PackageHealth } from '@components/PackageHealth';
 import { PackageLinks, npmUrl } from '@components/PackageLinks';
 import { PACKAGE_TABS, PackageTabs, type PackageTab } from '@components/PackageTabs';
 import { SizeResult } from '@components/SizeResult';
@@ -35,7 +37,7 @@ const pendingText = (props: PendingProps): string => {
     return props.status === 'queued' ? 'Waiting for a free worker…' : 'Installing and bundling the package…';
 };
 
-/** The analysis runs in the worker; the page asks again every second until it has an answer. */
+/** The analysis runs in the worker; the page keeps asking until it has an answer. */
 const Pending = (props: PendingProps) => (
     <div
         role={'status'}
@@ -44,6 +46,35 @@ const Pending = (props: PendingProps) => (
         <IsoAnalyzing className={'h-auto w-full max-w-sm'} />
         <p className={'text-callout text-muted-foreground'}>{pendingText(props)}</p>
     </div>
+);
+
+/** The page is there at once, and the first answer fills it: most packages have already been measured. */
+const SizeSkeleton = () => (
+    <div
+        role={'status'}
+        className={'flex flex-col gap-8'}
+    >
+        <span className={'sr-only'}>Loading the package…</span>
+        <div
+            aria-hidden={'true'}
+            className={'flex flex-col gap-1'}
+        >
+            <p className={'text-overline text-muted-foreground uppercase'}>Minified + gzip</p>
+            <div className={'skeleton h-[clamp(5rem,22vw,9rem)] w-full max-w-md'} />
+        </div>
+        <div
+            aria-hidden={'true'}
+            className={'skeleton h-32 w-full'}
+        />
+    </div>
+);
+
+const PackageNotFound = () => (
+    <NotFound
+        title={'Package not found'}
+        message={'npm has no package or version by this name.'}
+        label={'Not on npm'}
+    />
 );
 
 type FailedProps = { failure: AnalysisFailure };
@@ -126,40 +157,59 @@ const PackagePage = () => {
     const spec = Route.useParams()._splat ?? '';
     const { tab } = Route.useSearch();
     const navigate = useNavigate({ from: '/package/$' });
-    const { data, isRefetchError } = useSuspenseQuery(analysisQuery(spec));
-    // While there is nothing to read yet, the page holds one thing, in its middle.
-    const finished = data.status === 'done';
+    const { data, error, isRefetchError, refetch } = useQuery(analysisQuery(spec));
+    if (data === undefined && error !== null) {
+        if (error instanceof ApiError && error.code === 'NOT_FOUND') return <PackageNotFound />;
+        return (
+            <ErrorState
+                error={error}
+                reset={() => void refetch()}
+            />
+        );
+    }
+    const parsed = parseSpec(spec);
+    const version = data?.package.version ?? parsed?.version;
+    // While it is being measured or has failed, the page holds one thing, in its middle.
+    const wide = data === undefined || data.status === 'done';
 
     return (
         <main
             id={'main'}
             tabIndex={-1}
+            aria-busy={data === undefined}
             className={
-                finished
+                wide
                     ? 'mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-4 py-10 sm:py-14'
                     : 'mx-auto flex w-full max-w-2xl flex-1 flex-col items-center justify-center gap-6 px-4 py-14 text-center'
             }
         >
-            <div className={finished ? 'flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2' : 'flex flex-col items-center gap-2'}>
+            <div className={wide ? 'flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2' : 'flex flex-col items-center gap-2'}>
                 <h1 className={'min-w-0 text-title-1 break-words'}>
-                    {data.package.name}
-                    <span className={'text-muted-foreground'}>@{data.package.version}</span>
+                    {data?.package.name ?? parsed?.name ?? spec}
+                    {version !== undefined && <span className={'text-muted-foreground'}>@{version}</span>}
                 </h1>
-                <PackageLinks
-                    package={data.package}
-                    repositoryUrl={finished ? data.result.repositoryUrl : undefined}
-                />
-                {finished && data.result.description !== null && <p className={'w-full max-w-3xl text-headline font-normal text-muted-foreground'}>{data.result.description}</p>}
+                {data !== undefined && (
+                    <PackageLinks
+                        package={data.package}
+                        repositoryUrl={data.status === 'done' ? data.result.repositoryUrl : undefined}
+                    />
+                )}
+                {data?.status === 'done' && data.result.description !== null && <p className={'w-full max-w-3xl text-headline font-normal text-muted-foreground'}>{data.result.description}</p>}
             </div>
-            {(data.status === 'queued' || data.status === 'running') && (
+            {data === undefined && <SizeSkeleton />}
+            {(data?.status === 'queued' || data?.status === 'running') && (
                 <Pending
                     status={data.status}
                     stalled={isRefetchError}
                 />
             )}
-            {data.status === 'done' && (
+            {data?.status === 'done' && (
                 <>
                     <SizeResult result={data.result} />
+                    <PackageHealth
+                        package={data.package}
+                        entry={data.result.entry}
+                    />
                     <PackageDetails
                         data={data}
                         tab={tab}
@@ -169,7 +219,7 @@ const PackagePage = () => {
                     />
                 </>
             )}
-            {data.status === 'failed' && <Failed failure={data.failure} />}
+            {data?.status === 'failed' && <Failed failure={data.failure} />}
         </main>
     );
 };
@@ -229,8 +279,13 @@ export const Route = createFileRoute('/package/$')({
     loader: async ({ params, context }) => {
         const spec = params._splat ?? '';
         if (parseSpec(spec) === undefined) throw notFound();
+        // In the browser the page opens at once and fills itself in. Only the server waits, for crawlers and for a page that arrives complete.
+        if (typeof document !== 'undefined') {
+            void context.queryClient.query(analysisQuery(spec)).catch(noop);
+            return context.queryClient.getQueryData(analysisQuery(spec).queryKey);
+        }
         try {
-            return await context.queryClient.ensureQueryData(analysisQuery(spec));
+            return await context.queryClient.query({ ...analysisQuery(spec), staleTime: 'static' });
         } catch (error) {
             if (error instanceof ApiError && error.code === 'NOT_FOUND') throw notFound();
             throw error;
@@ -238,11 +293,5 @@ export const Route = createFileRoute('/package/$')({
     },
     head: ({ params, loaderData }) => packageHead(params._splat ?? '', loaderData),
     component: PackagePage,
-    notFoundComponent: () => (
-        <NotFound
-            title={'Package not found'}
-            message={'npm has no package or version by this name.'}
-            label={'Not on npm'}
-        />
-    ),
+    notFoundComponent: PackageNotFound,
 });
