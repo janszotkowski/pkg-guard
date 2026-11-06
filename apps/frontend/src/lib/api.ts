@@ -10,7 +10,7 @@ import {
     type PackageSuggestion,
     type PackagesResponse,
     type TrendRange,
-} from '@pkg-guard/core';
+} from '@weighme/core';
 import { keepPreviousData, queryOptions, type QueryState } from '@tanstack/react-query';
 import { apiBaseUrl, internalApiHeaders } from '@config/api';
 
@@ -22,7 +22,7 @@ const HISTORY_POLL_MS = 2000;
 const FAILED_POLL_MS = 5000;
 const MAX_POLL_FAILURES = 6;
 
-export { ApiError } from '@pkg-guard/core';
+export { ApiError } from '@weighme/core';
 
 /**
  * The one way the frontend talks to the backend: the typed client from core. Made per call: from the browser it asks at

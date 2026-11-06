@@ -191,7 +191,7 @@ importers:
       '@modelcontextprotocol/server':
         specifier: 2.4.0
         version: 2.4.0
-      '@pkg-guard/core':
+      '@weighme/core':
         specifier: workspace:*
         version: link:../../packages/core
       hono:
@@ -222,7 +222,7 @@ importers:
 
   apps/cli:
     dependencies:
-      '@pkg-guard/core':
+      '@weighme/core':
         specifier: workspace:*
         version: link:../../packages/core
       zod:
@@ -262,9 +262,6 @@ importers:
       '@fontsource/inter':
         specifier: 5.3.0
         version: 5.3.0
-      '@pkg-guard/core':
-        specifier: workspace:*
-        version: link:../../packages/core
       '@resvg/resvg-js':
         specifier: 2.6.2
         version: 2.6.2
@@ -289,6 +286,9 @@ importers:
       '@tanstack/react-table':
         specifier: 9.2.4
         version: 9.2.4(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      '@weighme/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       class-variance-authority:
         specifier: 0.7.1
         version: 0.7.1
@@ -347,7 +347,7 @@ importers:
 
   apps/worker:
     dependencies:
-      '@pkg-guard/core':
+      '@weighme/core':
         specifier: workspace:*
         version: link:../../packages/core
       pino:

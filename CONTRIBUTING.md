@@ -1,13 +1,13 @@
-# Contributing to pkg-guard
+# Contributing to weighme
 
 Thank you for helping. Bug reports, wrong measurements, ideas and code are all welcome. By taking part you agree to follow the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## Ways to help
 
-- **Report a bug** in the app, the API or the worker: [open a bug report](https://github.com/janszotkowski/pkg-guard/issues/new?template=bug_report.yml).
-- **Report a wrong measurement**: a size, composition or install footprint that does not match what you measure yourself. [Open a measurement issue](https://github.com/janszotkowski/pkg-guard/issues/new?template=wrong_measurement.yml) with the package, the version and how you measured.
-- **Suggest a feature**, a new measurement or a new view: [open a feature request](https://github.com/janszotkowski/pkg-guard/issues/new?template=feature_request.yml). The [roadmap](docs/ROADMAP.md) lists what is already planned.
-- **Report a vulnerability in pkg-guard** privately, as described in [SECURITY.md](SECURITY.md). Never in a public issue.
+- **Report a bug** in the app, the API or the worker: [open a bug report](https://github.com/janszotkowski/weighme/issues/new?template=bug_report.yml).
+- **Report a wrong measurement**: a size, composition or install footprint that does not match what you measure yourself. [Open a measurement issue](https://github.com/janszotkowski/weighme/issues/new?template=wrong_measurement.yml) with the package, the version and how you measured.
+- **Suggest a feature**, a new measurement or a new view: [open a feature request](https://github.com/janszotkowski/weighme/issues/new?template=feature_request.yml). The [roadmap](docs/ROADMAP.md) lists what is already planned.
+- **Report a vulnerability in weighme** privately, as described in [SECURITY.md](SECURITY.md). Never in a public issue.
 
 For anything larger than a small fix, please open an issue first so we can agree on the approach before you spend time on it.
 
@@ -28,7 +28,7 @@ Before you open a pull request, run what CI runs:
 pnpm verify
 ```
 
-It runs the dependency and workflow policy, lint, format check, typecheck, tests, the production build and the smoke test, and must pass. CI then runs the browser tests (`pnpm e2e`, after `pnpm --filter @pkg-guard/e2e exec playwright install chromium` once) and builds the three Docker images.
+It runs the dependency and workflow policy, lint, format check, typecheck, tests, the production build and the smoke test, and must pass. CI then runs the browser tests (`pnpm e2e`, after `pnpm --filter @weighme/e2e exec playwright install chromium` once) and builds the three Docker images.
 
 ## Project structure
 

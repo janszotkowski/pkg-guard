@@ -1,4 +1,4 @@
-import type { AnalysisResult } from '@pkg-guard/core';
+import type { AnalysisResult } from '@weighme/core';
 import { Link } from '@tanstack/react-router';
 import { formatSizeText } from '@lib/format';
 import { HEADER_CELL, NUMBER_CELL, TEXT_CELL } from '@lib/tableClasses';

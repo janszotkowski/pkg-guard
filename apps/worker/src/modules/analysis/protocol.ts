@@ -1,4 +1,4 @@
-import type { AnalysisFailure, AnalysisResult, ExportDetails, PackageRef } from '@pkg-guard/core';
+import type { AnalysisFailure, AnalysisResult, ExportDetails, PackageRef } from '@weighme/core';
 import type { AnalyzeOptions } from './analyze.ts';
 
 /** What the worker sends to the process of one analysis. */

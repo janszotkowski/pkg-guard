@@ -30,13 +30,13 @@ COPY packages/core/package.json packages/core/
 
 # ---- worker ----
 FROM manifests AS worker-build
-RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store pnpm install --frozen-lockfile --store-dir /pnpm/store --filter @pkg-guard/worker...
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store pnpm install --frozen-lockfile --store-dir /pnpm/store --filter @weighme/worker...
 COPY tsconfig.base.json ./
 COPY packages/core packages/core
 COPY apps/worker apps/worker
 # Only the production dependencies, with the built files, in one folder.
-RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store pnpm --filter @pkg-guard/worker build \
-    && pnpm --filter @pkg-guard/worker deploy --prod --prefer-offline --store-dir /pnpm/store /out/worker
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store pnpm --filter @weighme/worker build \
+    && pnpm --filter @weighme/worker deploy --prod --prefer-offline --store-dir /pnpm/store /out/worker
 
 FROM node:24.22.1-bookworm-slim@sha256:55fb5f5a527ea2c5c4a95f963e48ef90aa38c7b346054fdc8ee9957a2b55d205 AS worker
 # The worker installs packages with pnpm when it runs: the one Corepack verified in the base stage, as its native binary
@@ -56,15 +56,15 @@ CMD ["node", "dist/main.worker.mjs"]
 
 # ---- backend ----
 FROM manifests AS backend-build
-RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store pnpm install --frozen-lockfile --store-dir /pnpm/store --filter @pkg-guard/backend...
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store pnpm install --frozen-lockfile --store-dir /pnpm/store --filter @weighme/backend...
 COPY tsconfig.base.json ./
 COPY packages/core packages/core
 COPY apps/backend apps/backend
-RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store pnpm --filter @pkg-guard/backend build \
-    && pnpm --filter @pkg-guard/backend deploy --prod --prefer-offline --store-dir /pnpm/store /out/backend
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store pnpm --filter @weighme/backend build \
+    && pnpm --filter @weighme/backend deploy --prod --prefer-offline --store-dir /pnpm/store /out/backend
 
 FROM node:24.22.1-bookworm-slim@sha256:55fb5f5a527ea2c5c4a95f963e48ef90aa38c7b346054fdc8ee9957a2b55d205 AS backend
-ENV NODE_ENV=production HOST=0.0.0.0 PORT=4100 DATABASE_PATH=/data/pkg-guard.db
+ENV NODE_ENV=production HOST=0.0.0.0 PORT=4100 DATABASE_PATH=/data/weighme.db
 WORKDIR /app
 COPY --from=backend-build --chown=node:node /out/backend/package.json ./
 COPY --from=backend-build --chown=node:node /out/backend/node_modules node_modules
@@ -82,7 +82,7 @@ CMD ["node", "dist/main.api.mjs"]
 
 # ---- frontend ----
 FROM manifests AS frontend-build
-RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store pnpm install --frozen-lockfile --store-dir /pnpm/store --filter @pkg-guard/frontend...
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store pnpm install --frozen-lockfile --store-dir /pnpm/store --filter @weighme/frontend...
 # The browser calls the API at this address, and it is baked into the bundle: a build argument, not a runtime setting.
 ARG VITE_API_URL=http://localhost:4100
 ARG VITE_SITE_URL=http://localhost:3100
@@ -93,7 +93,7 @@ COPY packages/core packages/core
 COPY apps/frontend apps/frontend
 # The /api, /mcp, /architecture and /changelog pages render the files of docs/ at build time.
 COPY docs docs
-RUN pnpm --filter @pkg-guard/frontend build
+RUN pnpm --filter @weighme/frontend build
 
 FROM node:24.22.1-bookworm-slim@sha256:55fb5f5a527ea2c5c4a95f963e48ef90aa38c7b346054fdc8ee9957a2b55d205 AS frontend
 ENV NODE_ENV=production HOST=0.0.0.0 PORT=3100

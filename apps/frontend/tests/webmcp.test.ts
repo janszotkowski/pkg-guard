@@ -1,4 +1,4 @@
-import { ApiError, type AnalysisResponse } from '@pkg-guard/core';
+import { ApiError, type AnalysisResponse } from '@weighme/core';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { TrendsSearch } from '@lib/trends';
 import { registerWebMcpTools, webMcpTools, type WebMcpDeps } from '@lib/webmcp';

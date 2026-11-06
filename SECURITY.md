@@ -1,8 +1,8 @@
 # Security policy
 
-This policy is about vulnerabilities **in pkg-guard itself**: the code in this repository and the service built from it.
+This policy is about vulnerabilities **in weighme itself**: the code in this repository and the service built from it.
 
-A vulnerability in a package measured by the service is not a pkg-guard issue. Report it to that package's maintainers.
+A vulnerability in a package measured by the service is not a weighme issue. Report it to that package's maintainers.
 
 ## Supported versions
 
@@ -12,7 +12,7 @@ Only the latest commit on `main` is supported; there are no maintained release b
 
 Please **do not open a public issue** for a security problem.
 
-Report it privately through GitHub instead: on the repository page, open **Security → Report a vulnerability** ([direct link](https://github.com/janszotkowski/pkg-guard/security/advisories/new)). Please include:
+Report it privately through GitHub instead: on the repository page, open **Security → Report a vulnerability** ([direct link](https://github.com/janszotkowski/weighme/security/advisories/new)). Please include:
 
 - what is affected (an endpoint, a page, the worker, the Docker image)
 - steps or a proof of concept that reproduces it

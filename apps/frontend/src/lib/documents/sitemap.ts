@@ -1,4 +1,4 @@
-import type { PackagesResponse } from '@pkg-guard/core';
+import type { PackagesResponse } from '@weighme/core';
 import { canonicalUrl } from '@config/site';
 import { STATIC_PAGES } from '@lib/documents/pages';
 

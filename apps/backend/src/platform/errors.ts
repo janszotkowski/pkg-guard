@@ -1,4 +1,4 @@
-import type { ErrorCode, ErrorResponse } from '@pkg-guard/core';
+import type { ErrorCode, ErrorResponse } from '@weighme/core';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 
 /** One field's problem, for `VALIDATION_FAILED`. */

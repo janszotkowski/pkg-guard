@@ -3,7 +3,7 @@ import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { gzip as gzipCallback, brotliCompress as brotliCallback, constants } from 'node:zlib';
 import { promisify } from 'node:util';
-import type { AnalysisResult } from '@pkg-guard/core';
+import type { AnalysisResult } from '@weighme/core';
 import { rolldown, VERSION } from 'rolldown';
 import { compositionOf } from './composition.ts';
 import { createExternal, isFatalUnresolved, type NodeUse } from './external.ts';

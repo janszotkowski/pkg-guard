@@ -1,6 +1,6 @@
 import { setTimeout as sleep } from 'node:timers/promises';
 import { parseArgs } from 'node:util';
-import { ApiError, createApiClient, formatSizeText, parseSpec, type AnalysisResponse, type AnalysisResult } from '@pkg-guard/core';
+import { ApiError, createApiClient, formatSizeText, parseSpec, type AnalysisResponse, type AnalysisResult } from '@weighme/core';
 
 /** Where the API is until the site is deployed (docs/TODO.md): the one `pnpm dev` starts. */
 export const DEFAULT_API_URL = 'http://127.0.0.1:4100';
@@ -9,13 +9,13 @@ export const DEFAULT_API_URL = 'http://127.0.0.1:4100';
 const POLL_MS = 1000;
 const WAIT_MS = 120_000;
 
-const USAGE = `Usage: pkg-guard <package> [--json] [--api <url>]
+const USAGE = `Usage: weighme <package> [--json] [--api <url>]
 
 What an npm package costs your bundle. A package not measured yet is measured on the server; its code is never run.
 
   <package>      A name, optionally with a version or tag: react, react@19.1.0, react@next
   --json         The API's whole answer as JSON
-  --api <url>    The API to ask (or PKG_GUARD_API_URL); default ${DEFAULT_API_URL}
+  --api <url>    The API to ask (or WEIGHME_API_URL); default ${DEFAULT_API_URL}
   --help         This text
 `;
 
@@ -45,7 +45,7 @@ const parseCommandLine = (argv: string[], env: CliIo['env']): Options | 'help' |
     }
     if (parsed.values.help === true) return 'help';
     const [spec, ...rest] = parsed.positionals;
-    const api = parsed.values.api ?? env['PKG_GUARD_API_URL'] ?? DEFAULT_API_URL;
+    const api = parsed.values.api ?? env['WEIGHME_API_URL'] ?? DEFAULT_API_URL;
     if (spec === undefined || rest.length > 0 || parseSpec(spec) === undefined || !/^https?:\/\//.test(api) || !URL.canParse(api)) return undefined;
     return { spec, json: parsed.values.json === true, api: api.replace(/\/+$/, '') };
 };

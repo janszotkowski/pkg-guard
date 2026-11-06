@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import type { AnalysisResponse } from '@pkg-guard/core';
+import type { AnalysisResponse } from '@weighme/core';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { canonicalUrl, siteConfig } from '@config/site';
 import { aiCatalog, apiCatalog } from '@lib/documents/discovery';
@@ -20,9 +20,9 @@ describe('pageHead', () => {
     const head = pageHead({ title: 'react size', description: 'What react costs.', path: '/package/react', breadcrumbs: [{ name: 'Home', path: '/' }] });
 
     it('adds the brand once', () => {
-        expect(fullTitle('react size')).toBe('react size | pkg-guard');
-        expect(fullTitle('react size | pkg-guard')).toBe('react size | pkg-guard');
-        expect(fullTitle('pkg-guard')).toBe('pkg-guard');
+        expect(fullTitle('react size')).toBe('react size | weighme');
+        expect(fullTitle('react size | weighme')).toBe('react size | weighme');
+        expect(fullTitle('weighme')).toBe('weighme');
     });
 
     it('has one canonical address, and the same on the card', () => {
@@ -81,7 +81,7 @@ describe('pageHead in production', () => {
                 { name: 'How it works', path: '/about' },
             ],
             page: { '@type': 'AboutPage' },
-            nodes: [{ '@type': 'WebApplication', '@id': `${url('/')}#application`, name: 'pkg-guard' }],
+            nodes: [{ '@type': 'WebApplication', '@id': `${url('/')}#application`, name: 'weighme' }],
         });
         expect(metaOf(head, 'name', 'robots')?.content).toBe('index, follow');
         const graph = (JSON.parse(head.scripts[0]?.children ?? '{}') as { '@graph': Record<string, unknown>[] })['@graph'];

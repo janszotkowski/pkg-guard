@@ -9,5 +9,5 @@ export default defineConfig({
     clean: true,
     tsconfig: 'tsconfig.json',
     // The workspace package core is imported from source, so it is bundled in.
-    deps: { alwaysBundle: [/^@pkg-guard\//] },
+    deps: { alwaysBundle: [/^@weighme\//] },
 });

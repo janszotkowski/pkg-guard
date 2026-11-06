@@ -1,4 +1,4 @@
-import { ANALYZER_VERSION, analysisResponseSchema, type AnalysisFailure, type AnalysisResponse, type AnalysisResult, type ExportDetails, type Job, type PackageRef } from '@pkg-guard/core';
+import { ANALYZER_VERSION, analysisResponseSchema, type AnalysisFailure, type AnalysisResponse, type AnalysisResult, type ExportDetails, type Job, type PackageRef } from '@weighme/core';
 import { AppError } from '@platform/errors.ts';
 import type { Database } from './database.ts';
 

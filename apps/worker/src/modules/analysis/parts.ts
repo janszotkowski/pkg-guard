@@ -1,5 +1,5 @@
 import { join } from 'node:path';
-import type { ExportDetails } from '@pkg-guard/core';
+import type { ExportDetails } from '@weighme/core';
 import { bundleEntry, compressPart } from './bundle.ts';
 import { importableNames, namedEntry, subpathsOf, type Entry, type Manifest } from './entry.ts';
 
@@ -30,7 +30,7 @@ const measureAll = async <T>(parts: readonly Part<T>[], options: PartsOptions, p
     for (let start = 0; start < parts.length && performance.now() < options.deadline; start += BATCH) {
         await Promise.all(
             parts.slice(start, start + BATCH).map(async (part, offset) => {
-                const file = join(options.dir, `pkg-guard-${prefix}-${start + offset}.mjs`);
+                const file = join(options.dir, `weighme-${prefix}-${start + offset}.mjs`);
                 try {
                     const { files } = await bundleEntry(part.entry, file, options.dir, options.peers);
                     measured.push({ label: part.label, ...(await compressPart(files)) });

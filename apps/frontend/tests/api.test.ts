@@ -1,4 +1,4 @@
-import { ANALYZER_VERSION } from '@pkg-guard/core';
+import { ANALYZER_VERSION } from '@weighme/core';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { fetchAnalysis } from '@lib/api';
 

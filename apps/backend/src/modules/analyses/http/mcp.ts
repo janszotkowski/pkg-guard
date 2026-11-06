@@ -1,4 +1,4 @@
-import { AGENT_LIST_LIMIT, analysisForAgent, isExactVersion, parseSpec, type PackageSpec } from '@pkg-guard/core';
+import { AGENT_LIST_LIMIT, analysisForAgent, isExactVersion, parseSpec, type PackageSpec } from '@weighme/core';
 import { McpServer, createMcpHandler, type CallToolResult, type ToolAnnotations } from '@modelcontextprotocol/server';
 import { Hono } from 'hono';
 import { z } from 'zod';
@@ -30,7 +30,7 @@ const specOf = (value: string): PackageSpec => {
 
 /** One server's tools; a server is made per request, so nothing is kept between calls. */
 export const createPackageMcpServer = (deps: McpDeps): McpServer => {
-    const server = new McpServer({ name: 'pkg-guard', title: 'pkg-guard', version: deps.version }, { instructions: INSTRUCTIONS });
+    const server = new McpServer({ name: 'weighme', title: 'weighme', version: deps.version }, { instructions: INSTRUCTIONS });
 
     /** What a tool answers: JSON, or the reason it could not, as a result the model can read and act on. */
     const answer = async (compute: () => Promise<unknown>): Promise<CallToolResult> => {

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { AnalysisResponse, AnalysisResult } from '@pkg-guard/core';
+import type { AnalysisResponse, AnalysisResult } from '@weighme/core';
 import { DEFAULT_API_URL, run, type CliIo } from '@src/cli.ts';
 
 const RESULT: AnalysisResult = {
@@ -30,7 +30,7 @@ const setup = (answers: Response[], env: CliIo['env'] = {}) => {
     return { io, fetchStub, out: () => out.join(''), err: () => err.join('') };
 };
 
-describe('pkg-guard', () => {
+describe('weighme', () => {
     it('prints the sizes of a measured package and nothing its author wrote', async () => {
         const { io, fetchStub, out } = setup([json(DONE)]);
         expect(await run(['react'], io)).toBe(0);
@@ -79,10 +79,10 @@ describe('pkg-guard', () => {
     });
 
     it('takes the API from the option before the environment, without a trailing slash', async () => {
-        const fromEnv = setup([json(DONE)], { PKG_GUARD_API_URL: 'https://env.example' });
+        const fromEnv = setup([json(DONE)], { WEIGHME_API_URL: 'https://env.example' });
         await run(['react'], fromEnv.io);
         expect(String(fromEnv.fetchStub.mock.calls[0]?.[0])).toMatch(/^https:\/\/env\.example\/v1\//);
-        const fromOption = setup([json(DONE)], { PKG_GUARD_API_URL: 'https://env.example' });
+        const fromOption = setup([json(DONE)], { WEIGHME_API_URL: 'https://env.example' });
         await run(['react', '--api', 'https://option.example/'], fromOption.io);
         expect(String(fromOption.fetchStub.mock.calls[0]?.[0])).toMatch(/^https:\/\/option\.example\/v1\//);
     });

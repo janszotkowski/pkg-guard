@@ -225,7 +225,7 @@ try {
         const response = await request({});
         expect(response.status === 200, `got ${response.status}`);
         // JSON or one server-sent event, as the protocol revision has it: either way, the text names the server.
-        expect((await response.text()).includes('"name":"pkg-guard"'), 'the server does not name itself');
+        expect((await response.text()).includes('"name":"weighme"'), 'the server does not name itself');
         const foreign = await request({ origin: 'https://evil.example' });
         expect(foreign.status === 403, `a foreign origin got ${foreign.status}`);
     });

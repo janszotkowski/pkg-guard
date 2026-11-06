@@ -1,4 +1,4 @@
-import type { AnalysisResult } from '@pkg-guard/core';
+import type { AnalysisResult } from '@weighme/core';
 
 /** Enough for any list a person reads: the rest is shown as one line. */
 const MAX_PACKAGES = 30;

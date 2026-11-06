@@ -1,6 +1,6 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { randomBytes } from 'node:crypto';
-import { parseSpec, type PackagesResponse } from '@pkg-guard/core';
+import { parseSpec, type PackagesResponse } from '@weighme/core';
 import handler from '@tanstack/react-start/server-entry';
 import { API_URL } from '@config/api';
 import { ALLOW_INDEXING, canonicalUrl } from '@config/site';

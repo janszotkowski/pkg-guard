@@ -1,4 +1,4 @@
-import type { AnalysisFailure } from '@pkg-guard/core';
+import type { AnalysisFailure } from '@weighme/core';
 
 /** A failure with a code the backend stores and the page explains. */
 export class AnalysisError extends Error {

@@ -4,13 +4,13 @@
         {
             "name": "frontend",
             "runtimeExecutable": "pnpm",
-            "runtimeArgs": ["--filter", "@pkg-guard/frontend", "dev"],
+            "runtimeArgs": ["--filter", "@weighme/frontend", "dev"],
             "port": 3100
         },
         {
             "name": "backend",
             "runtimeExecutable": "pnpm",
-            "runtimeArgs": ["--filter", "@pkg-guard/backend", "dev"],
+            "runtimeArgs": ["--filter", "@weighme/backend", "dev"],
             "port": 4100
         }
     ]

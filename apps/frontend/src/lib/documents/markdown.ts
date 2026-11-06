@@ -1,4 +1,4 @@
-import { parseSpec, type AnalysisResponse } from '@pkg-guard/core';
+import { parseSpec, type AnalysisResponse } from '@weighme/core';
 import { canonicalUrl, siteConfig } from '@config/site';
 import { formatDownloadTimes, formatSizeText } from '@lib/format';
 

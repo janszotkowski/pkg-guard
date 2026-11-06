@@ -1,5 +1,5 @@
 import { setTimeout as sleep } from 'node:timers/promises';
-import { claimResponseSchema, isExactVersion, isValidPackageName, type AnalysisFailure, type AnalysisResult, type ExportDetails, type Job } from '@pkg-guard/core';
+import { claimResponseSchema, isExactVersion, isValidPackageName, type AnalysisFailure, type AnalysisResult, type ExportDetails, type Job } from '@weighme/core';
 import { z } from 'zod';
 import type { Config } from '@config/env.ts';
 

@@ -1,5 +1,5 @@
 {
-    "name": "@pkg-guard/worker",
+    "name": "@weighme/worker",
     "version": "0.0.0",
     "private": true,
     "description": "Worker, run only in Docker: installs one npm package at a time without running its code, bundles it and reports what it costs",
@@ -10,7 +10,7 @@
         "typecheck": "tsc -p tsconfig.json"
     },
     "dependencies": {
-        "@pkg-guard/core": "workspace:*",
+        "@weighme/core": "workspace:*",
         "pino": "10.4.0",
         "rolldown": "1.2.14",
         "zod": "4.6.7"

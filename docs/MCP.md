@@ -1,6 +1,6 @@
-# pkg-guard MCP server
+# weighme MCP server
 
-pkg-guard is also a [Model Context Protocol](https://modelcontextprotocol.io) server, so an AI assistant can check what a dependency costs before adding it, instead of guessing from what it remembers. It reads the same data as the site and the [JSON API](API.md). It is free, with no key and no account.
+weighme is also a [Model Context Protocol](https://modelcontextprotocol.io) server, so an AI assistant can check what a dependency costs before adding it, instead of guessing from what it remembers. It reads the same data as the site and the [JSON API](API.md). It is free, with no key and no account.
 
 The site is not deployed yet, so the address below is the one `pnpm dev` starts on your own machine.
 
@@ -15,7 +15,7 @@ The server speaks Streamable HTTP, so a client needs only the address above.
 **Claude Code**
 
 ```bash
-claude mcp add --transport http pkg-guard http://127.0.0.1:4100/v1/mcp
+claude mcp add --transport http weighme http://127.0.0.1:4100/v1/mcp
 ```
 
 **Cursor**, in `~/.cursor/mcp.json`:
@@ -23,7 +23,7 @@ claude mcp add --transport http pkg-guard http://127.0.0.1:4100/v1/mcp
 ```json
 {
     "mcpServers": {
-        "pkg-guard": { "url": "http://127.0.0.1:4100/v1/mcp" }
+        "weighme": { "url": "http://127.0.0.1:4100/v1/mcp" }
     }
 }
 ```
@@ -33,7 +33,7 @@ claude mcp add --transport http pkg-guard http://127.0.0.1:4100/v1/mcp
 ```json
 {
     "servers": {
-        "pkg-guard": { "type": "http", "url": "http://127.0.0.1:4100/v1/mcp" }
+        "weighme": { "type": "http", "url": "http://127.0.0.1:4100/v1/mcp" }
     }
 }
 ```
@@ -72,6 +72,10 @@ A value a tool cannot read is answered with the problem, so an agent can correct
 - **Not a safety check.** It shows sizes and what the registry says. It does not judge whether a package is safe to install.
 - **In the browser.** The site's pages also offer [WebMCP](https://webmachinelearning.github.io/webmcp/) tools to an agent running in the browser: `search_packages`, `get_package_cost`, `get_package_metadata`, `get_version_history`, `get_downloads`, and `open_package` and `show_trends`, which move the page. This server is for every other client.
 - **Calls from web pages.** A request with an `Origin` header the server does not know is refused with `403`. Programs send no such header.
+
+## A skill for your agent
+
+The repository has a skill that tells an agent when to check a dependency and how to report the result: `skills/weighme/SKILL.md`. Copy that folder to where your agent keeps its skills, which for Claude Code is `~/.claude/skills/`. It needs the server connected as above.
 
 ## Self-hosting
 

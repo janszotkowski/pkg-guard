@@ -6,9 +6,9 @@ export const SITE_URL: string = (typeof configuredSiteUrl === 'string' && config
 export const ALLOW_INDEXING: boolean = import.meta.env.VITE_ALLOW_INDEXING === 'true';
 
 export const siteConfig = {
-    title: 'pkg-guard',
+    title: 'weighme',
     description: 'What an npm package really costs your bundle: minified, gzip and brotli sizes, measured with a modern bundler. Free and open source, no account.',
-    repository: 'https://github.com/janszotkowski/pkg-guard',
+    repository: 'https://github.com/janszotkowski/weighme',
     /** Who builds the site: the person behind it, with their real public profile only. */
     author: { name: 'Jan Szotkowski', url: 'https://github.com/janszotkowski', x: 'https://x.com/janszotkowskix', xHandle: '@janszotkowskix' },
 } as const;

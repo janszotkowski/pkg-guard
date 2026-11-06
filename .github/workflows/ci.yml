@@ -91,7 +91,7 @@ jobs:
 
             # The browser tests: Chromium against the built apps (apps/e2e), with no worker, so nothing is downloaded from npm.
             - name: Install Chromium for the browser tests
-              run: pnpm --filter @pkg-guard/e2e exec playwright install --with-deps chromium
+              run: pnpm --filter @weighme/e2e exec playwright install --with-deps chromium
 
             # The HTML report (with the trace of a retried test) is written in CI too, for the upload below.
             - name: Browser tests (Playwright)

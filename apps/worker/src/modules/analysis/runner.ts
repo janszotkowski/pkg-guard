@@ -2,7 +2,7 @@ import { fork } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { rm } from 'node:fs/promises';
 import { join } from 'node:path';
-import type { PackageRef } from '@pkg-guard/core';
+import type { PackageRef } from '@weighme/core';
 import type { Config } from '@config/env.ts';
 import type { AnalyzeMessage, AnalyzeRequest } from './protocol.ts';
 

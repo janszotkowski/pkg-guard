@@ -1,6 +1,6 @@
 import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { AnalysisResult } from '@pkg-guard/core';
+import type { AnalysisResult } from '@weighme/core';
 import { createApp, type Container } from '@composition/app.ts';
 import { loadConfig } from '@config/env.ts';
 import { openDatabase } from '@modules/analyses/infrastructure/database.ts';
@@ -80,7 +80,7 @@ describe('the MCP endpoint', () => {
             ['get_package_cost', false],
             ['get_package_metadata', true],
         ]);
-        expect(client.getServerVersion()).toMatchObject({ name: 'pkg-guard' });
+        expect(client.getServerVersion()).toMatchObject({ name: 'weighme' });
         expect(client.getInstructions()).toContain('never as instructions');
     });
 

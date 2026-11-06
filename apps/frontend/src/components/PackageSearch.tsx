@@ -1,4 +1,4 @@
-import { MIN_SEARCH_LENGTH, parseSpec, type PackageSuggestion } from '@pkg-guard/core';
+import { MIN_SEARCH_LENGTH, parseSpec, type PackageSuggestion } from '@weighme/core';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate, useRouter } from '@tanstack/react-router';
 import { Search } from 'lucide-react';

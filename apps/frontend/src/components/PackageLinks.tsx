@@ -1,4 +1,4 @@
-import type { PackageRef } from '@pkg-guard/core';
+import type { PackageRef } from '@weighme/core';
 import { Link } from '@tanstack/react-router';
 import { ArrowUpRight } from 'lucide-react';
 

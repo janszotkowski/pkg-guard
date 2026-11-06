@@ -1,4 +1,4 @@
-# pkg-guard API
+# weighme API
 
 A public JSON API over what npm packages cost a bundle: minified, gzip and brotli sizes measured by really bundling each package, what an install puts on disk, and what the registry says of a version. It is what the site itself runs on. No account and no key are needed.
 
@@ -300,7 +300,7 @@ Every change to the API and the site is in the [changelog](CHANGELOG.md), with t
 
 ```bash
 # TypeScript types
-npx openapi-typescript http://127.0.0.1:4100/v1/openapi.json -o pkg-guard.d.ts
+npx openapi-typescript http://127.0.0.1:4100/v1/openapi.json -o weighme.d.ts
 
 # A Python package
 openapi-python-client generate --url http://127.0.0.1:4100/v1/openapi.json

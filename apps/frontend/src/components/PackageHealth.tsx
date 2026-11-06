@@ -1,4 +1,4 @@
-import type { AnalysisResult, HistoryResponse, PackageMetadata, PackageRef } from '@pkg-guard/core';
+import type { AnalysisResult, HistoryResponse, PackageMetadata, PackageRef } from '@weighme/core';
 import { useQuery } from '@tanstack/react-query';
 import { CopyButton } from '@components/CopyButton';
 import { Notice } from '@components/Notice';

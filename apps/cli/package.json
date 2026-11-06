@@ -1,10 +1,10 @@
 {
-    "name": "@pkg-guard/cli",
+    "name": "@weighme/cli",
     "version": "0.0.0",
     "private": true,
-    "description": "Command line: what an npm package costs your bundle, from the pkg-guard API",
+    "description": "Command line: what an npm package costs your bundle, from the weighme API",
     "bin": {
-        "pkg-guard": "./dist/main.cli.mjs"
+        "weighme": "./dist/main.cli.mjs"
     },
     "type": "module",
     "scripts": {
@@ -13,7 +13,7 @@
         "typecheck": "tsc -p tsconfig.json"
     },
     "dependencies": {
-        "@pkg-guard/core": "workspace:*",
+        "@weighme/core": "workspace:*",
         "zod": "4.6.7"
     },
     "devDependencies": {

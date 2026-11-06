@@ -5,7 +5,7 @@ body:
     - type: markdown
       attributes:
           value: |
-              pkg-guard measures a package with a real bundler, without running its code. If the numbers differ from yours, say how you measured: the bundler, its settings and the entry you imported matter. How it works is in docs/ARCHITECTURE.md.
+              weighme measures a package with a real bundler, without running its code. If the numbers differ from yours, say how you measured: the bundler, its settings and the entry you imported matter. How it works is in docs/ARCHITECTURE.md.
     - type: input
       id: package
       attributes:
@@ -30,7 +30,7 @@ body:
     - type: textarea
       id: difference
       attributes:
-          label: What pkg-guard shows, and what you measured
+          label: What weighme shows, and what you measured
           description: Both numbers, and the bundler and settings you used.
       validations:
           required: true

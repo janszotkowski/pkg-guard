@@ -1,4 +1,4 @@
-import type { AnalysisResult } from '@pkg-guard/core';
+import type { AnalysisResult } from '@weighme/core';
 import { Link } from '@tanstack/react-router';
 import { FigureBand } from '@components/FigureBand';
 import { Notice } from '@components/Notice';

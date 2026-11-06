@@ -1,4 +1,4 @@
-import { parseSpec } from '@pkg-guard/core';
+import { parseSpec } from '@weighme/core';
 import { X } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import { PackageSearch } from '@components/PackageSearch';

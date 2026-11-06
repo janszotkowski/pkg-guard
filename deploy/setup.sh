@@ -2,14 +2,14 @@
 # Sets up a fresh Ubuntu server (a Hetzner CX23 is enough) to run the whole site behind a Cloudflare Tunnel. Run it as
 # root on the server; it asks for the domain and the tunnel token, and can be run again (it keeps what is already set).
 #
-#   curl -fsSL https://raw.githubusercontent.com/janszotkowski/pkg-guard/main/deploy/setup.sh -o setup.sh
+#   curl -fsSL https://raw.githubusercontent.com/janszotkowski/weighme/main/deploy/setup.sh -o setup.sh
 #   bash setup.sh
 #
 # DEPLOY.md walks through everything around it (the server, the domain, the tunnel).
 set -euo pipefail
 
-REPO_URL="${REPO_URL:-https://github.com/janszotkowski/pkg-guard.git}"
-APP_DIR="${APP_DIR:-/opt/pkg-guard}"
+REPO_URL="${REPO_URL:-https://github.com/janszotkowski/weighme.git}"
+APP_DIR="${APP_DIR:-/opt/weighme}"
 
 say() { printf '\n\033[1;34m==> %s\033[0m\n' "$*"; }
 fail() {
@@ -55,7 +55,7 @@ if [[ -s /root/.ssh/authorized_keys ]]; then
     say "SSH: keys only, passwords off"
     hardening=/etc/ssh/sshd_config.d/00-hardening.conf
     cat >"$hardening" <<'EOF'
-# Written by pkg-guard's deploy/setup.sh: log in with an SSH key only.
+# Written by weighme's deploy/setup.sh: log in with an SSH key only.
 PasswordAuthentication no
 KbdInteractiveAuthentication no
 PermitRootLogin prohibit-password

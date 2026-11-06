@@ -1,4 +1,4 @@
-import type { ExportDetails, ExportsState } from '@pkg-guard/core';
+import type { ExportDetails, ExportsState } from '@weighme/core';
 import { useId, useMemo, useState } from 'react';
 import { Button } from '@components/ui/button';
 import { Input } from '@components/ui/input';

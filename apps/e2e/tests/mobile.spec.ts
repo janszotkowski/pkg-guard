@@ -10,7 +10,7 @@ test('on a phone, every page fits the screen without scrolling sideways', async 
 
 test('on a phone, the logo link keeps its name, with the text out of sight', async ({ page }) => {
     await page.goto('/about');
-    await expect(page.getByRole('banner').getByRole('link', { name: 'pkg-guard' })).toBeVisible();
+    await expect(page.getByRole('banner').getByRole('link', { name: 'weighme' })).toBeVisible();
 });
 
 test('on a phone, the search is usable', async ({ page }) => {

@@ -1,5 +1,5 @@
 {
-    "name": "@pkg-guard/e2e",
+    "name": "@weighme/e2e",
     "version": "0.0.0",
     "private": true,
     "description": "Browser tests: the built backend and frontend together, on a desktop and a phone, with an axe-core audit",

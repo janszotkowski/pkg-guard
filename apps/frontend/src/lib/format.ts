@@ -1,4 +1,4 @@
-export { formatSize, formatSizeText, type FormattedSize } from '@pkg-guard/core';
+export { formatSize, formatSizeText, type FormattedSize } from '@weighme/core';
 
 const COUNT = new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 });
 

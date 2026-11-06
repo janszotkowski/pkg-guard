@@ -53,7 +53,7 @@ export default defineConfig({
             },
         },
         {
-            command: 'pnpm --filter @pkg-guard/frontend build && node apps/frontend/.output/server/index.mjs',
+            command: 'pnpm --filter @weighme/frontend build && node apps/frontend/.output/server/index.mjs',
             cwd: root,
             url: `${frontend}/about`,
             reuseExistingServer: false,

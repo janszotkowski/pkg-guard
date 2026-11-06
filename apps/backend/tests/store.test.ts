@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { AnalysisResult, ExportDetails } from '@pkg-guard/core';
+import type { AnalysisResult, ExportDetails } from '@weighme/core';
 import { openDatabase } from '@modules/analyses/infrastructure/database.ts';
 import { createAnalysisStore } from '@modules/analyses/infrastructure/store.ts';
 

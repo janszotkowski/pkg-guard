@@ -1,6 +1,6 @@
 import { readFile, realpath } from 'node:fs/promises';
 import { join } from 'node:path';
-import type { AnalysisResult, ExportDetails, PackageRef } from '@pkg-guard/core';
+import type { AnalysisResult, ExportDetails, PackageRef } from '@weighme/core';
 import { BUNDLER, bundleEntry, compress, type Bundle } from './bundle.ts';
 import { commandsOf, descriptionOf, entrySource, peerNames, type Manifest } from './entry.ts';
 import { AnalysisError, EmptyEntryError, NoEntryError } from './failure.ts';
@@ -33,7 +33,7 @@ export const analyze = async (ref: PackageRef, options: AnalyzeOptions): Promise
     }
     const entry = entrySource(ref.name, manifest);
     const peerDependencies = peerNames(manifest);
-    const entryFile = join(dir, 'pkg-guard-entry.mjs');
+    const entryFile = join(dir, 'weighme-entry.mjs');
 
     const bundleStarted = performance.now();
     let whole: Bundle | undefined;

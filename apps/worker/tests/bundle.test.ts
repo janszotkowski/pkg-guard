@@ -10,7 +10,7 @@ import { EmptyEntryError } from '@modules/analysis/failure.ts';
 let dir: string;
 
 beforeEach(async () => {
-    dir = await realpath(await mkdtemp(join(tmpdir(), 'pkg-guard-bundle-')));
+    dir = await realpath(await mkdtemp(join(tmpdir(), 'weighme-bundle-')));
 });
 
 afterEach(async () => {

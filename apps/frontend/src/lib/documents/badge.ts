@@ -1,4 +1,4 @@
-import { formatSizeText, type AnalysisResponse } from '@pkg-guard/core';
+import { formatSizeText, type AnalysisResponse } from '@weighme/core';
 import { canonicalUrl } from '@config/site';
 
 /** A badge as drawn, and how long it may be kept. */

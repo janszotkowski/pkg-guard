@@ -5,7 +5,7 @@
  */
 type VisitorStore = { getStore: () => { ip: string | undefined } | undefined };
 
-export const VISITOR_STORE_KEY = Symbol.for('pkg-guard.visitor');
+export const VISITOR_STORE_KEY = Symbol.for('weighme.visitor');
 
 /** The address of the visitor this server render is for; undefined in the browser and outside a request. */
 export const visitorIp = (): string | undefined => (globalThis as { [VISITOR_STORE_KEY]?: VisitorStore })[VISITOR_STORE_KEY]?.getStore()?.ip;

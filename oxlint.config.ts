@@ -50,8 +50,8 @@ export default defineConfig({
             plugins: ['react', 'jsx-a11y'],
             jsPlugins: ['./tools/oxlint-plugin.js'],
             rules: {
-                'pkgguard/no-destructured-component-props': 'error',
-                'pkgguard/no-inline-component-props-type': 'error',
+                'weighme/no-destructured-component-props': 'error',
+                'weighme/no-inline-component-props-type': 'error',
                 'react/jsx-curly-brace-presence': [
                     'error',
                     {

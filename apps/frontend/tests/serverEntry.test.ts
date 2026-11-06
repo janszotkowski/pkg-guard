@@ -1,5 +1,5 @@
 import { brotliDecompressSync } from 'node:zlib';
-import type { AnalysisResponse } from '@pkg-guard/core';
+import type { AnalysisResponse } from '@weighme/core';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { SITEMAP_PAGE_SIZE } from '@lib/documents/sitemap';
 

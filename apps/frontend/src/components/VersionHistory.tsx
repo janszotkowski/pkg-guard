@@ -1,4 +1,4 @@
-import type { VersionEntry } from '@pkg-guard/core';
+import type { VersionEntry } from '@weighme/core';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';

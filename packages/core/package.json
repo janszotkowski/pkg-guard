@@ -1,5 +1,5 @@
 {
-    "name": "@pkg-guard/core",
+    "name": "@weighme/core",
     "version": "0.0.0",
     "private": true,
     "description": "Shared contract (schemas and types) of the backend, the worker and the frontend",

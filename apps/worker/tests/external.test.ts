@@ -43,7 +43,7 @@ describe('createExternal', () => {
 
 describe('isFatalUnresolved', () => {
     it('is fatal only when the entry itself cannot find the package', () => {
-        expect(isFatalUnresolved("Could not resolve 'zod' in pkg-guard-entry.mjs")).toBe(true);
+        expect(isFatalUnresolved("Could not resolve 'zod' in weighme-entry.mjs")).toBe(true);
         expect(isFatalUnresolved("Could not resolve 'critters' in node_modules/next/dist/x.js")).toBe(false);
     });
 });

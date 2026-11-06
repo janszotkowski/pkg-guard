@@ -2,7 +2,7 @@ import { execFile } from 'node:child_process';
 import { lstat, mkdir, readdir, writeFile } from 'node:fs/promises';
 import { basename, dirname, join } from 'node:path';
 import { promisify } from 'node:util';
-import type { PackageRef } from '@pkg-guard/core';
+import type { PackageRef } from '@weighme/core';
 import { AnalysisError } from './failure.ts';
 
 const run = promisify(execFile);
@@ -28,7 +28,7 @@ export const installPackage = async (ref: PackageRef, dir: string, storeDir: str
     await mkdir(dir, { recursive: true });
     const userConfig = join(dir, '.user-npmrc');
     await Promise.all([
-        writeFile(join(dir, 'package.json'), JSON.stringify({ name: 'pkg-guard-analysis', private: true, dependencies: { [ref.name]: ref.version } })),
+        writeFile(join(dir, 'package.json'), JSON.stringify({ name: 'weighme-analysis', private: true, dependencies: { [ref.name]: ref.version } })),
         writeFile(join(dir, 'pnpm-workspace.yaml'), WORKSPACE_SETTINGS),
         writeFile(join(dir, '.npmrc'), 'registry=https://registry.npmjs.org/\n'),
         writeFile(userConfig, ''),

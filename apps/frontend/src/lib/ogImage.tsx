@@ -1,5 +1,5 @@
 import { renderAsync } from '@resvg/resvg-js';
-import type { AnalysisResult, PackageRef } from '@pkg-guard/core';
+import type { AnalysisResult, PackageRef } from '@weighme/core';
 import type { ReactNode } from 'react';
 import satori from 'satori';
 import interRegular from '@fontsource/inter/files/inter-latin-400-normal.woff?inline';

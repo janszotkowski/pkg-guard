@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Installs the newest version from GitHub on the server: `bash deploy/update.sh` in the app's folder (/opt/pkg-guard).
+# Installs the newest version from GitHub on the server: `bash deploy/update.sh` in the app's folder (/opt/weighme).
 # The database stays on its volume, so every measurement is kept.
 set -euo pipefail
 

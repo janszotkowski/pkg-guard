@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { API_VERSION, openApiDocument } from '@pkg-guard/core';
+import { API_VERSION, openApiDocument } from '@weighme/core';
 import { describe, expect, it } from 'vitest';
 import { siteConfig } from '@config/site';
 import { DOC_PAGES, doc as lazyDoc, docsUrl, headingId, type Doc } from '@lib/docs';

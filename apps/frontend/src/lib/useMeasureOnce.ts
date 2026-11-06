@@ -1,4 +1,4 @@
-import type { HistoryResponse } from '@pkg-guard/core';
+import type { HistoryResponse } from '@weighme/core';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
 import { historyQuery, measureHistory } from '@lib/api';

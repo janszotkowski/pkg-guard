@@ -1,15 +1,15 @@
-# pkg-guard
+# weighme
 
-![pkg-guard: What an npm package really costs your bundle](.github/banner.svg)
+![weighme: What an npm package really costs your bundle](.github/banner.svg)
 
 **What an npm package really costs your bundle, free and open source.** Search for a package and see its minified, gzip and brotli sizes, what it puts on disk and which packages make up its bundle, measured with a modern bundler. The package's code is never run.
 
 **Not deployed yet:** for now it runs on your own machine. What is still required before a public release is in the [TODO](docs/TODO.md).
 
-[![CI](https://github.com/janszotkowski/pkg-guard/actions/workflows/ci.yml/badge.svg)](https://github.com/janszotkowski/pkg-guard/actions/workflows/ci.yml)
+[![CI](https://github.com/janszotkowski/weighme/actions/workflows/ci.yml/badge.svg)](https://github.com/janszotkowski/weighme/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-pkg-guard measures a package the first time someone asks for it, and keeps the result. A worker in a locked-down Docker container installs the package without running any of its scripts and bundles it with Rolldown. It needs no paid API and no account, and has no analytics.
+weighme measures a package the first time someone asks for it, and keeps the result. A worker in a locked-down Docker container installs the package without running any of its scripts and bundles it with Rolldown. It needs no paid API and no account, and has no analytics.
 
 [API reference](docs/API.md) · [MCP server](docs/MCP.md) · [Changelog](docs/CHANGELOG.md) · [Architecture](docs/ARCHITECTURE.md) · [Deployment](DEPLOY.md) · [Roadmap](docs/ROADMAP.md) · [Contributing](CONTRIBUTING.md) · [License](LICENSE)
 
@@ -24,7 +24,7 @@ pkg-guard measures a package the first time someone asks for it, and keeps the r
 - **Trends**: up to 4 packages side by side, by size across releases or downloads over time, with GitHub stars.
 - **Shareable state**: the tab, the compared packages and the chart's settings live in the URL. Copy it, bookmark it, send it.
 - **Badges**: `/badge/<name>.svg` shows a package's gzip size in a README. Showing one never causes a download.
-- **A command line**: `pkg-guard react` prints what a package costs in the terminal, or the whole answer with `--json`.
+- **A command line**: `weighme react` prints what a package costs in the terminal, or the whole answer with `--json`.
 - **Its code never runs**: packages are installed without their scripts, in a Docker container with a read-only root, no capabilities, caps on memory, processors and processes, and a network that reaches only the npm registry; the bundler only reads them. What is downloaded stays on a Docker volume, never on the machine.
 - **Made to be found and cited**: every measured package has its own server-rendered page with structured data and a share image; a sitemap, `llms.txt`, and a Markdown version of every measured package for AI agents (`/package/<name>.md` or `Accept: text/markdown`).
 - **An MCP server for AI assistants**: connect Claude, Cursor or any other client to `/v1/mcp` and let it check what a dependency costs before adding it, with no key. An agent in the browser finds the same on the site's pages, as WebMCP tools.
@@ -72,6 +72,7 @@ packages/core    Shared API contract (zod/mini), typed API client, package spec 
 deploy           The scripts that set up and update a server
 docker           The configuration of the worker's network gateway
 docs             API reference, MCP guide, changelog, architecture, roadmap
+skills           A skill that tells an AI agent when and how to use the MCP server
 tools            Policy check, smoke test, .env initializer, oxlint plugin
 ```
 
@@ -89,8 +90,8 @@ tools            Policy check, smoke test, .env initializer, oxlint plugin
 You need **Node 24.22.1** (see `.node-version`), **pnpm 12** (the exact version is pinned in `package.json` and fetched automatically) and **Docker**.
 
 ```bash
-git clone https://github.com/janszotkowski/pkg-guard.git
-cd pkg-guard
+git clone https://github.com/janszotkowski/weighme.git
+cd weighme
 pnpm install
 pnpm dev
 ```
@@ -143,7 +144,7 @@ Errors share one shape, `{ error: { code, message, requestId } }`, with codes `V
 An AI assistant can use the same data over the [Model Context Protocol](https://modelcontextprotocol.io). The server is free and needs no key. It has limits of its own on top of the API's.
 
 ```bash
-claude mcp add --transport http pkg-guard http://127.0.0.1:4100/v1/mcp
+claude mcp add --transport http weighme http://127.0.0.1:4100/v1/mcp
 ```
 
 | Tool                   | Answers                                                                                                    |
@@ -160,12 +161,12 @@ The frontend draws a badge with the gzip size at `/badge/<name>.svg`. Showing on
 ### Command line
 
 ```bash
-pnpm --filter @pkg-guard/cli build
+pnpm --filter @weighme/cli build
 node apps/cli/dist/main.cli.mjs react
 node apps/cli/dist/main.cli.mjs react@19.1.0 --json
 ```
 
-It asks the API, and waits while a package is being measured. Until the site is deployed, it asks the local one; `--api <url>` or `PKG_GUARD_API_URL` name another. The exit code is 0 with a result, 1 without one and 2 for a command line that makes no sense. It is not on npm yet.
+It asks the API, and waits while a package is being measured. Until the site is deployed, it asks the local one; `--api <url>` or `WEIGHME_API_URL` name another. The exit code is 0 with a result, 1 without one and 2 for a command line that makes no sense. It is not on npm yet.
 
 ## ⚙️ Configuration
 
@@ -174,7 +175,7 @@ The backend reads its settings from the environment once at start-up and refuses
 | Variable                                                            | Default                          | Meaning                                                                                                                                 |
 | ------------------------------------------------------------------- | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
 | `PORT`, `HOST`                                                      | `4100`, `127.0.0.1`              | Where the API listens (on Linux, the worker in Docker needs more than `127.0.0.1`)                                                      |
-| `DATABASE_PATH`                                                     | `./data/pkg-guard.db`            | The SQLite file (created when missing); `:memory:` for tests                                                                            |
+| `DATABASE_PATH`                                                     | `./data/weighme.db`              | The SQLite file (created when missing); `:memory:` for tests                                                                            |
 | `CORS_ORIGINS`                                                      | any localhost port (development) | Comma-separated origins of the frontend; required in production                                                                         |
 | `WORKER_TOKEN`                                                      | none (required)                  | What the worker proves itself with (32+ characters); the example value is refused in production                                         |
 | `INTERNAL_API_TOKEN`                                                | none                             | Shared with the frontend's server, so its rendering is limited per visitor (32+ characters); the example value is refused in production |
@@ -205,7 +206,7 @@ The frontend's settings are build-time (`VITE_*`, baked into the bundle) plus a 
 
 ## 🚢 Deployment
 
-**On your own server:** [DEPLOY.md](DEPLOY.md) is a step-by-step guide for a Hetzner server behind a Cloudflare Tunnel, with a script that sets everything up. pkg-guard has not been deployed yet, so it has not been tried on a real server.
+**On your own server:** [DEPLOY.md](DEPLOY.md) is a step-by-step guide for a Hetzner server behind a Cloudflare Tunnel, with a script that sets everything up. weighme has not been deployed yet, so it has not been tried on a real server.
 
 The whole product is the API, the frontend, the worker and its network gateway as containers, with the measurements in one SQLite file on a volume.
 
@@ -231,7 +232,7 @@ Serverless platforms without Docker and a persistent disk do not fit: the databa
 - [Architecture](docs/ARCHITECTURE.md) describes one analysis end to end, how packages are handled safely, the rate limit, the threat model, the documents for search engines and agents, the security headers and accessibility.
 - [Roadmap](docs/ROADMAP.md) lists the features that come next; the [TODO](docs/TODO.md) what must be done before the first public release.
 - [Deployment guide](DEPLOY.md) covers a production deployment behind a Cloudflare Tunnel.
-- [Security policy](SECURITY.md) explains how to report a vulnerability in pkg-guard.
+- [Security policy](SECURITY.md) explains how to report a vulnerability in weighme.
 - [AGENTS.md](AGENTS.md) spells out the code style, dependency and architecture rules, for coding agents and people.
 
 ## 🛠️ Development
@@ -244,7 +245,7 @@ Use the commands below while developing or validating a change:
 | `pnpm build`     | Production build of every package                                                                                                                                                            |
 | `pnpm test`      | Unit tests (Vitest), which download no packages                                                                                                                                              |
 | `pnpm smoke`     | Starts the built backend and frontend as production runs them and checks that they work together (health, validation, rate-limit headers, documents, security headers, Markdown negotiation) |
-| `pnpm e2e`       | Browser tests (Playwright) of the production builds, desktop and phone, with an axe-core audit; run `pnpm --filter @pkg-guard/e2e exec playwright install chromium` once first               |
+| `pnpm e2e`       | Browser tests (Playwright) of the production builds, desktop and phone, with an axe-core audit; run `pnpm --filter @weighme/e2e exec playwright install chromium` once first                 |
 | `pnpm typecheck` | TypeScript across the monorepo                                                                                                                                                               |
 | `pnpm lint`      | oxlint, warnings fail                                                                                                                                                                        |
 | `pnpm format`    | oxfmt (use `pnpm format:check` to only check)                                                                                                                                                |
@@ -254,11 +255,11 @@ Use the commands below while developing or validating a change:
 
 ## 🤝 Contributing
 
-Contributions are welcome: bug reports, wrong measurements, new measurements, new views. Please read [CONTRIBUTING.md](CONTRIBUTING.md) first; everyone taking part follows the [Code of Conduct](CODE_OF_CONDUCT.md). To report a security problem in pkg-guard itself, see [SECURITY.md](SECURITY.md).
+Contributions are welcome: bug reports, wrong measurements, new measurements, new views. Please read [CONTRIBUTING.md](CONTRIBUTING.md) first; everyone taking part follows the [Code of Conduct](CODE_OF_CONDUCT.md). To report a security problem in weighme itself, see [SECURITY.md](SECURITY.md).
 
 ## 🐛 Issues & Support
 
-Open an issue for a [bug](https://github.com/janszotkowski/pkg-guard/issues/new?template=bug_report.yml), a [wrong measurement](https://github.com/janszotkowski/pkg-guard/issues/new?template=wrong_measurement.yml), or a [feature request](https://github.com/janszotkowski/pkg-guard/issues/new?template=feature_request.yml). For a security issue in pkg-guard itself, follow the private reporting process in [SECURITY.md](SECURITY.md); never open a public issue for it. A vulnerability in a package that pkg-guard measured is not a pkg-guard issue: report it to that package's maintainers.
+Open an issue for a [bug](https://github.com/janszotkowski/weighme/issues/new?template=bug_report.yml), a [wrong measurement](https://github.com/janszotkowski/weighme/issues/new?template=wrong_measurement.yml), or a [feature request](https://github.com/janszotkowski/weighme/issues/new?template=feature_request.yml). For a security issue in weighme itself, follow the private reporting process in [SECURITY.md](SECURITY.md); never open a public issue for it. A vulnerability in a package that weighme measured is not a weighme issue: report it to that package's maintainers.
 
 ## 📋 Code of Conduct
 
@@ -266,7 +267,7 @@ Everyone taking part in the project is expected to follow the [Code of Conduct](
 
 ## 📄 License
 
-pkg-guard measures packages as published on npm and shows public data as its sources give it, without warranty of any kind.
+weighme measures packages as published on npm and shows public data as its sources give it, without warranty of any kind.
 
 - Packages, versions and what a version declares come from the [npm registry](https://registry.npmjs.org), and download counts from [npm's statistics](https://api.npmjs.org).
 - Stars come from [GitHub](https://github.com).
@@ -275,4 +276,4 @@ pkg-guard measures packages as published on npm and shows public data as its sou
 
 ## 👥 Authors & Contributors
 
-Created and maintained by [Jan Szotkowski](https://github.com/janszotkowski). See the [contributor graph](https://github.com/janszotkowski/pkg-guard/graphs/contributors) for everyone who has helped improve pkg-guard.
+Created and maintained by [Jan Szotkowski](https://github.com/janszotkowski). See the [contributor graph](https://github.com/janszotkowski/weighme/graphs/contributors) for everyone who has helped improve weighme.

@@ -1,4 +1,4 @@
-import { ApiError, TREND_RANGES, analysisForAgent, parseSpec, type TrendRange } from '@pkg-guard/core';
+import { ApiError, TREND_RANGES, analysisForAgent, parseSpec, type TrendRange } from '@weighme/core';
 import { canonicalUrl } from '@config/site';
 import type { fetchAnalysis, fetchDownloads, fetchHistory, fetchMetadata, fetchSuggestions } from '@lib/api';
 import { MAX_TREND_PACKAGES, TREND_GROUPS, TREND_METRICS, groupDownloads, parsePackages, todayIso, validateTrendsSearch, type TrendGroup, type TrendsSearch } from '@lib/trends';

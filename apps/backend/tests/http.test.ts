@@ -1,7 +1,7 @@
 import { serve } from '@hono/node-server';
 import { HTTPException } from 'hono/http-exception';
 import { describe, expect, it, vi } from 'vitest';
-import { createApiClient, errorResponseSchema, type AnalysisResult } from '@pkg-guard/core';
+import { createApiClient, errorResponseSchema, type AnalysisResult } from '@weighme/core';
 import { createApp, type Container } from '@composition/app.ts';
 import { loadConfig } from '@config/env.ts';
 import { openDatabase } from '@modules/analyses/infrastructure/database.ts';

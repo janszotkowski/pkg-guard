@@ -104,7 +104,7 @@ describe('the configuration', () => {
         expect(loaded.ok).toBe(true);
         if (!loaded.ok) return;
         expect(loaded.config.GITHUB_TOKEN).toBeUndefined();
-        expect(loaded.config).toMatchObject({ PORT: 4100, LOG_LEVEL: 'info', CORS_ORIGINS: [], DATABASE_PATH: './data/pkg-guard.db' });
+        expect(loaded.config).toMatchObject({ PORT: 4100, LOG_LEVEL: 'info', CORS_ORIGINS: [], DATABASE_PATH: './data/weighme.db' });
         // A blank required value is still missing.
         expect(loadConfig({ WORKER_TOKEN: '' })).toMatchObject({ ok: false });
     });

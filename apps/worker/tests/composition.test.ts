@@ -21,7 +21,7 @@ describe('compositionOf', () => {
 
     it('leaves out the entry, the runtime and what tree-shaking emptied', () => {
         const { packages } = compositionOf([
-            ['/work/pkg-guard-entry.mjs', 50],
+            ['/work/weighme-entry.mjs', 50],
             ['\0rolldown/runtime.js', 50],
             ['/work/node_modules/gone/index.js', 0],
             ['/work/node_modules/kept/index.js', 10],

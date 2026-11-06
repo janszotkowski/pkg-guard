@@ -12,7 +12,7 @@ body:
     - type: textarea
       id: proposal
       attributes:
-          label: How could pkg-guard help?
+          label: How could weighme help?
           description: A sketch of the feature, measurement or view you have in mind. The roadmap (docs/ROADMAP.md) lists what is already planned.
     - type: textarea
       id: data

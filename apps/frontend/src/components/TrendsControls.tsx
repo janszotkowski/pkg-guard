@@ -1,4 +1,4 @@
-import type { TrendRange } from '@pkg-guard/core';
+import type { TrendRange } from '@weighme/core';
 import { CopyButton } from '@components/CopyButton';
 import { SegmentedControl } from '@components/SegmentedControl';
 import type { TrendGroup, TrendMetric, TrendsSearch } from '@lib/trends';

@@ -71,10 +71,10 @@ export type OpenApiOptions = {
  * The OpenAPI 3.1 description of `/v1`, served at `/v1/openapi.json`. The response shapes come from the zod schemas the
  * API itself is checked against, so this cannot drift from what is sent; the prose lives in docs/API.md.
  */
-export const openApiDocument = ({ rateLimitPerMinute = 300, docsUrl = 'https://github.com/janszotkowski/pkg-guard/blob/main/docs/API.md' }: OpenApiOptions = {}) => ({
+export const openApiDocument = ({ rateLimitPerMinute = 300, docsUrl = 'https://github.com/janszotkowski/weighme/blob/main/docs/API.md' }: OpenApiOptions = {}) => ({
     openapi: '3.1.0',
     info: {
-        title: 'pkg-guard API',
+        title: 'weighme API',
         version: API_VERSION,
         summary: 'Free, public API: what an npm package costs a bundle, measured by really bundling it.',
         description: `No key, JSON. Each caller may make ${rateLimitPerMinute} requests per minute (\`RateLimit-*\` headers). Full reference with examples: ${docsUrl}. The same data is available to AI agents over the Model Context Protocol at \`/v1/mcp\`, which is not described here.`,

@@ -1,13 +1,13 @@
 /**
  * Project lint rules that oxlint has no built-in rule for.
  *
- * `pkgguard/no-destructured-component-props`: a React component is an arrow function
+ * `weighme/no-destructured-component-props`: a React component is an arrow function
  * assigned to a PascalCase const, and it takes ONE parameter named like any other
  * (`props: Props`) and reads `props.x`. Destructuring in the parameter list
  * (`({ error, reset }: Props) => …`) is not allowed. Destructuring from `props`
  * inside the body is fine when a component needs to forward the rest.
  *
- * `pkgguard/no-inline-component-props-type`: the props type is declared by name above the
+ * `weighme/no-inline-component-props-type`: the props type is declared by name above the
  * component (`type CardProps = { … }`, `(props: CardProps) => …`), never written inline
  * in the parameter (`(props: { title: string }) => …`).
  */
@@ -85,6 +85,6 @@ const inlineTypeRule = {
 };
 
 export default {
-    meta: { name: 'pkgguard' },
+    meta: { name: 'weighme' },
     rules: { 'no-destructured-component-props': rule, 'no-inline-component-props-type': inlineTypeRule },
 };

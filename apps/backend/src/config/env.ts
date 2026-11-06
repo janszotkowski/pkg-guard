@@ -46,7 +46,7 @@ const envSchema = z
                     .filter((origin) => origin !== ''),
             ),
         /** The SQLite file. Its folder is created when missing; `:memory:` keeps it in memory (tests). */
-        DATABASE_PATH: z.string().min(1).default('./data/pkg-guard.db'),
+        DATABASE_PATH: z.string().min(1).default('./data/weighme.db'),
         /** What the worker sends to take jobs and hand in results. */
         WORKER_TOKEN: z.string().min(32),
         /** Optional: GitHub allows 60 questions an hour without a token, for the stars in the trends table. It needs no permissions. */

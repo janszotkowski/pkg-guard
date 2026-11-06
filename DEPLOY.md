@@ -2,7 +2,7 @@
 
 The whole site runs on one small server: a Hetzner Cloud CX23 (2 vCPU, 4 GB RAM, 40 GB disk), about 7 € a month, with Cloudflare's free plan in front. No server experience is needed; every command is here to copy.
 
-> pkg-guard has not been deployed yet. This guide and its scripts follow the ones CVE Tracker runs on, and the containers have been run together locally, but they have not been tried on a real server. The repository must be public for the setup script to download the code.
+> weighme has not been deployed yet. This guide and its scripts follow the ones CVE Tracker runs on, and the containers have been run together locally, but they have not been tried on a real server. The repository must be public for the setup script to download the code.
 
 How the pieces fit:
 
@@ -51,7 +51,7 @@ In the [Hetzner Console](https://console.hetzner.com): **Servers → Add server*
 
 In the [Cloudflare dashboard](https://dash.cloudflare.com): **Zero Trust → Networks → Tunnels → Create a tunnel**.
 
-1. Choose **Cloudflared**, name it (`pkg-guard`), save.
+1. Choose **Cloudflared**, name it (`weighme`), save.
 2. On the install page choose **Docker**. It shows a command like `docker run cloudflare/cloudflared:latest tunnel --no-autoupdate run --token eyJh…`. Copy the **token**: the long text after `--token`. Do not run the command; the setup script runs `cloudflared` for you.
 3. Next, add two **public hostnames** (also called _published application routes_):
 
@@ -73,20 +73,20 @@ ssh root@203.0.113.10
 Now you are on the server. Download the setup script and run it:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/janszotkowski/pkg-guard/main/deploy/setup.sh -o setup.sh
+curl -fsSL https://raw.githubusercontent.com/janszotkowski/weighme/main/deploy/setup.sh -o setup.sh
 ```
 
 ```bash
 bash setup.sh
 ```
 
-It updates the system; installs Docker, a firewall (only SSH in), fail2ban and automatic security updates; turns off SSH password logins (only keys get in; without a key on the server it warns and leaves them on); adds swap; downloads the code to `/opt/pkg-guard`; and asks for:
+It updates the system; installs Docker, a firewall (only SSH in), fail2ban and automatic security updates; turns off SSH password logins (only keys get in; without a key on the server it warns and leaves them on); adds swap; downloads the code to `/opt/weighme`; and asks for:
 
 - the **domain** of the site (`example.com`),
 - the **API address** (Enter takes the suggested one; it must match the second public hostname),
 - the **tunnel token** from step 2 (pasting it shows nothing; that is on purpose),
 
-The answers and two generated secrets go into `/opt/pkg-guard/.env`. Then it builds and starts everything; the first build takes a few minutes.
+The answers and two generated secrets go into `/opt/weighme/.env`. Then it builds and starts everything; the first build takes a few minutes.
 
 Open `https://example.com` and look up a package. The first measurement of each takes a few seconds; what the worker downloads stays on its own Docker volume.
 
@@ -108,7 +108,7 @@ Under **SSL/TLS → Edge Certificates**, turn on **Always Use HTTPS**.
 
 ## Everyday commands
 
-Log in with `ssh root@<address>`, then `cd /opt/pkg-guard`:
+Log in with `ssh root@<address>`, then `cd /opt/weighme`:
 
 | Command                                          | What it does                                                     |
 | ------------------------------------------------ | ---------------------------------------------------------------- |
@@ -129,4 +129,4 @@ The database lives in a Docker volume (`api-data`) and survives updates and rest
 - **The page loads, but the data does not:** the API address in `.env` (`API_URL`) and the tunnel's second hostname must be the same name.
 - **Packages stay "queued":** the worker cannot reach the API. `docker compose logs --tail 100 worker` shows why; `BACKEND_URL` in `.env` must be `http://api:4100`, and `WORKER_TOKEN` is shared by both.
 - **Packages fail to install:** the worker reaches the registry only through its gateway. `docker compose logs --tail 100 registry-gateway` shows why.
-- **A wrong answer to the setup script:** edit `/opt/pkg-guard/.env` with `nano`, then `docker compose up -d --build` (the domains are built into the frontend, so it must be built again).
+- **A wrong answer to the setup script:** edit `/opt/weighme/.env` with `nano`, then `docker compose up -d --build` (the domains are built into the frontend, so it must be built again).

@@ -23,7 +23,7 @@ const entryFor = (specifier: string, esm: boolean): Entry => {
     const star = `export * from ${quoted};\n`;
     return esm
         ? { kind: 'export-star', code: `${star}export { default } from ${quoted};\n`, fallback: star }
-        : { kind: 'namespace', code: `import * as all from ${quoted};\nglobalThis.__pkgGuard = all;\n` };
+        : { kind: 'namespace', code: `import * as all from ${quoted};\nglobalThis.__weighme = all;\n` };
 };
 
 /** The module the bundler starts from to measure a whole package. */

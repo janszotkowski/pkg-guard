@@ -18,7 +18,7 @@ export const PUBLIC_PAGES: readonly PublicPage[] = [
     {
         path: '/about',
         title: 'How it works',
-        description: 'What pkg-guard downloads from npm, how packages are handled without running them, and how sizes and download times are worked out.',
+        description: 'What weighme downloads from npm, how packages are handled without running them, and how sizes and download times are worked out.',
         prerender: true,
     },
     // The address takes the packages compared (`?packages=react,vue`), and a static file would answer every comparison with the empty page.
@@ -31,25 +31,25 @@ export const PUBLIC_PAGES: readonly PublicPage[] = [
     {
         path: '/api',
         title: 'API documentation',
-        description: 'The free public pkg-guard API: every endpoint and field, with rate limits, error codes and examples for scripts and command-line tools.',
+        description: 'The free public weighme API: every endpoint and field, with rate limits, error codes and examples for scripts and command-line tools.',
         prerender: true,
     },
     {
         path: '/mcp',
         title: 'MCP server',
-        description: 'Let an AI assistant check what an npm package costs: the free pkg-guard MCP server, how to add it to Claude, Cursor or VS Code, and its tools.',
+        description: 'Let an AI assistant check what an npm package costs: the free weighme MCP server, how to add it to Claude, Cursor or VS Code, and its tools.',
         prerender: true,
     },
     {
         path: '/architecture',
         title: 'How it’s built',
-        description: 'How pkg-guard is built: how a package is measured end to end, how untrusted code is kept contained, the rate limit and the threat model.',
+        description: 'How weighme is built: how a package is measured end to end, how untrusted code is kept contained, the rate limit and the threat model.',
         prerender: true,
     },
     {
         path: '/changelog',
         title: 'Changelog',
-        description: 'What changed on pkg-guard and in its public API, newest first: new features, API versions and the versioning policy that keeps scripts working.',
+        description: 'What changed on weighme and in its public API, newest first: new features, API versions and the versioning policy that keeps scripts working.',
         prerender: true,
     },
 ];

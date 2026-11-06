@@ -1,4 +1,4 @@
-import { TREND_RANGE_DAYS, isExactVersion, isValidPackageName, type DownloadsResponse, type PackageMetadata, type PackageSuggestion, type TrendRange } from '@pkg-guard/core';
+import { TREND_RANGE_DAYS, isExactVersion, isValidPackageName, type DownloadsResponse, type PackageMetadata, type PackageSuggestion, type TrendRange } from '@weighme/core';
 import { rangeChunks } from '@modules/analyses/application/download-ranges.ts';
 import { selectVersions } from '@modules/analyses/application/versions.ts';
 import { AppError } from '@platform/errors.ts';
@@ -321,7 +321,7 @@ export const createStarsReader = (token: string | undefined, now: () => number =
                     const answer = await askJson({
                         url: `https://api.github.com/repos/${repository}`,
                         service: 'GitHub',
-                        headers: { accept: 'application/vnd.github+json', 'user-agent': 'pkg-guard', ...(token === undefined ? {} : { authorization: `Bearer ${token}` }) },
+                        headers: { accept: 'application/vnd.github+json', 'user-agent': 'weighme', ...(token === undefined ? {} : { authorization: `Bearer ${token}` }) },
                     });
                     const count = record(answer)['stargazers_count'];
                     return { stars: typeof count === 'number' ? count : null };

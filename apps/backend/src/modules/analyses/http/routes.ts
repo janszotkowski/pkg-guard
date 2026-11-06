@@ -13,7 +13,7 @@ import {
     type HistoryResponse,
     type PackageSpec,
     type VersionEntry,
-} from '@pkg-guard/core';
+} from '@weighme/core';
 import { Hono, type Context } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 import type { DownloadsReader, MetadataReader, PackageSearcher, ReleasedVersion, StarsReader, VersionLister, VersionResolver } from '@modules/analyses/infrastructure/registry.ts';

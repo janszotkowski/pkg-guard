@@ -1,4 +1,4 @@
-import { TREND_RANGES, parseSpec, type AnalysisResponse, type TrendRange, type VersionEntry } from '@pkg-guard/core';
+import { TREND_RANGES, parseSpec, type AnalysisResponse, type TrendRange, type VersionEntry } from '@weighme/core';
 import { ApiError } from '@lib/api';
 
 export const MAX_TREND_PACKAGES = 4;

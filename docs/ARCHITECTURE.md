@@ -1,6 +1,6 @@
 # How it's built
 
-pkg-guard is one TypeScript repository: a backend that stores what each npm package costs, a worker that measures packages, a server-rendered frontend, and a small package they share.
+weighme is one TypeScript repository: a backend that stores what each npm package costs, a worker that measures packages, a server-rendered frontend, and a small package they share.
 
 ```
  browser ──▶ frontend (TanStack Start, SSR) ──/v1/*──▶ backend (Hono + SQLite)

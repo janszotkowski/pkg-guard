@@ -1,4 +1,4 @@
-import { parseSpec, type AnalysisFailure, type AnalysisResponse } from '@pkg-guard/core';
+import { parseSpec, type AnalysisFailure, type AnalysisResponse } from '@weighme/core';
 import { noop, useQuery } from '@tanstack/react-query';
 import { createFileRoute, notFound, useNavigate } from '@tanstack/react-router';
 import { useMemo } from 'react';

@@ -1,6 +1,6 @@
 # Code of Conduct
 
-pkg-guard is built in the open, by and for people who care about what they ship. We want taking part in it to be a good experience for everyone, whatever their background, experience or identity.
+weighme is built in the open, by and for people who care about what they ship. We want taking part in it to be a good experience for everyone, whatever their background, experience or identity.
 
 ## What we expect
 
