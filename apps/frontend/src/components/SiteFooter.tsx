@@ -38,8 +38,8 @@ const XMark = () => (
 export const SiteFooter = () => (
     <footer className={'mt-16 border-t'}>
         <div className={'mx-auto w-full max-w-6xl px-4 py-10'}>
-            <div className={'grid grid-cols-2 gap-8 lg:grid-cols-[2fr_1fr_1fr]'}>
-                <div className={'col-span-2 flex flex-col gap-3 lg:col-span-1'}>
+            <div className={'grid grid-cols-2 gap-8 sm:grid-cols-3 lg:grid-cols-[2fr_1fr_1fr_1fr]'}>
+                <div className={'col-span-2 flex flex-col gap-3 sm:col-span-3 lg:col-span-1'}>
                     <Link
                         to={'/'}
                         className={'flex w-fit items-center gap-2 text-headline'}
